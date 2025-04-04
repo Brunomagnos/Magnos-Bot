@@ -1,6 +1,6 @@
 {
   "name": "MagnosBot",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Bot de atendimento automático para WhatsApp",
   "main": "main.js",
   "scripts": {
@@ -43,19 +43,6 @@
       "buildResources": "build",
       "output": "dist"
     },
-    "files": [
-      "**/*",
-      "!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
-      "!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}",
-      "!**/node_modules/*.d.ts",
-      "!**/node_modules/.bin",
-      "!**/*.{iml,o,hprof,orig,pyc,pyo,rbc,swp,csproj,sln,suo,xproj,cc}",
-      "!**/.*",
-      "!build/",
-      "!dist/",
-      "!.gitignore",
-      "!README.md"
-    ],
     "publish": {
       "provider": "github",
       "owner": "Brunomagnos",
