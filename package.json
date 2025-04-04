@@ -1,0 +1,35 @@
+{
+  "name": "MagnosBot",
+  "version": "1.0.0",
+  "description": "Bot de atendimento automático para WhatsApp",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder",
+    "publish": "electron-builder --publish always"
+  },
+  "keywords": [],
+  "author": "Magnos (com assistência AI)",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^29.1.0",
+    "electron-builder": "^24.13.3"
+  },
+  "dependencies": {
+    "electron-updater": "^6.6.2",
+    "qrcode": "^1.5.3",
+    "whatsapp-web.js": "^1.23.0"
+  },
+  "build": {
+    "appId": "com.magnos.autowppbot",
+    "productName": "Auto Wpp-Bot Magnos",
+    "asar": false,
+    "win": {},
+    "directories": {},
+    "publish": {
+      "provider": "github",
+      "owner": "Brunomagnos",
+      "repo": "Magnos-Bot"
+    }
+  }
+}
