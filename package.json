@@ -1,6 +1,6 @@
 {
   "name": "MagnosBot",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "Bot de atendimento automático para WhatsApp",
   "main": "main.js",
   "scripts": {
@@ -29,10 +29,8 @@
   "build": {
     "appId": "com.magnos.autowppbot",
     "productName": "Auto Wpp-Bot Magnos",
-    "asar": true,
-    "asarUnpack": [
-      "**/node_modules/puppeteer/.local-chromium/**"
-    ],
+    "asar": false, 
+    
     "win": {
       "target": "nsis",
       "icon": "build/icon.ico"
