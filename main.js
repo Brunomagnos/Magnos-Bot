@@ -2,360 +2,270 @@
 
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
+const fs = require('fs').promises; // Usando fs.promises para async/await
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode');
 const { autoUpdater } = require('electron-updater');
-const log = require('electron-log'); // Import electron-log
+const log = require('electron-log');
 
 // --- Configuração do Logger ---
-// Configura o logger do electron-log para também logar os eventos do autoUpdater
 autoUpdater.logger = log;
-autoUpdater.logger.transports.file.level = 'info'; // Loga informações, avisos e erros no arquivo
-log.transports.file.resolvePath = () => path.join(app.getPath('userData'), 'logs/main.log'); // Define onde o log principal será salvo
-// Opcional: Logar também no console durante o desenvolvimento
-// log.transports.console.level = 'info';
+autoUpdater.logger.transports.file.level = 'info';
+const logsPath = path.join(app.getPath('userData'), 'logs/main.log');
+log.transports.file.resolvePathFn = () => logsPath;
 
 // --- Variáveis Globais ---
 let mainWindow;
-let client; // Variável para armazenar a instância do cliente WhatsApp
+let client;
+const configPath = path.join(app.getPath('userData'), 'bot-config.json'); // Caminho para salvar config
+let botConfig = {}; // Armazena a configuração carregada em memória
 
 // --- Funções Auxiliares ---
-/**
- * Envia uma mensagem de log formatada para a janela principal (renderer).
- * @param {string} message Mensagem a ser logada.
- */
 function sendLogToWindow(message) {
     const timestamp = new Date().toLocaleTimeString();
     const formattedMessage = `[${timestamp}] ${message}`;
-    log.info(formattedMessage); // Loga no arquivo usando electron-log
-
-    // Envia para a interface apenas se a janela existir
-    if (mainWindow && mainWindow.webContents) {
+    log.info(formattedMessage);
+    if (mainWindow && mainWindow.webContents && !mainWindow.isDestroyed()) {
         try {
             mainWindow.webContents.send('log-message', formattedMessage);
-        } catch (error) {
-            log.error('Erro ao enviar log para a janela:', error); // Loga erro no arquivo
-        }
+        } catch (error) { log.error('Erro ao enviar log para a janela:', error); }
+    }
+}
+function updateAppStatus(status) {
+    sendLogToWindow(`Status: ${status}`);
+    if (mainWindow && mainWindow.webContents && !mainWindow.isDestroyed()) {
+        try {
+            mainWindow.webContents.send('update-status', status);
+        } catch (error) { log.error('Erro ao enviar status para a janela:', error); }
     }
 }
 
-/**
- * Atualiza o status exibido na janela principal (renderer).
- * @param {string} status Mensagem de status.
- */
-function updateAppStatus(status) {
-    sendLogToWindow(`Status: ${status}`); // Loga o status também
-    if (mainWindow && mainWindow.webContents) {
-        try {
-            mainWindow.webContents.send('update-status', status);
-        } catch (error) {
-            log.error('Erro ao enviar status para a janela:', error);
-        }
+// --- Funções de Configuração ---
+async function loadConfig() {
+    sendLogToWindow('[Config] Tentando carregar configuração de ' + configPath);
+    try {
+        const data = await fs.readFile(configPath, 'utf8');
+        botConfig = JSON.parse(data);
+        sendLogToWindow('[Config] Configuração carregada com sucesso.');
+    } catch (error) {
+        if (error.code === 'ENOENT') { // Arquivo não existe (primeira execução)
+            sendLogToWindow('[Config] Arquivo de configuração não encontrado. Usando configuração vazia.');
+            botConfig = {}; // Inicia com objeto vazio
+            // Opcional: Salvar um arquivo vazio para garantir que ele exista?
+             await saveConfig("{}").catch(e => sendLogToWindow("[Config ERRO] Falha ao criar config inicial: "+ e.message));
+        } else {
+            sendLogToWindow(`[Config ERRO] Falha ao ler/parsear configuração: ${error.message}`);
+            botConfig = {}; // Usa config vazia em caso de erro de parse
+            // Poderia notificar o usuário sobre o erro no arquivo?
+             dialog.showErrorBox('Erro de Configuração', `Não foi possível carregar o arquivo de configuração bot-config.json.\nVerifique se o formato JSON é válido.\n\nErro: ${error.message}`);
+         }
+    }
+    // Envia a configuração carregada (ou vazia) para a interface
+     if (mainWindow && mainWindow.webContents && !mainWindow.isDestroyed()) {
+         mainWindow.webContents.send('config-loaded', botConfig);
     }
 }
+
+async function saveConfig(configString) {
+    sendLogToWindow('[Config] Tentando salvar configuração...');
+    try {
+        const newConfig = JSON.parse(configString); // Valida se é JSON válido
+        await fs.writeFile(configPath, JSON.stringify(newConfig, null, 2), 'utf8'); // Salva formatado
+        botConfig = newConfig; // Atualiza a configuração em memória
+        sendLogToWindow('[Config] Configuração salva com sucesso em ' + configPath);
+        updateAppStatus('Configuração salva.');
+         // Opcional: notificar sucesso na UI de forma mais clara?
+    } catch (error) {
+        sendLogToWindow(`[Config ERRO] Falha ao parsear/salvar configuração: ${error.message}`);
+        updateAppStatus('Erro ao salvar configuração');
+        // O erro de parse já deve ter sido mostrado no renderer, mas pode mostrar aqui também
+         dialog.showErrorBox('Erro ao Salvar', `Não foi possível salvar a configuração.\nVerifique se o formato JSON é válido.\n\nErro: ${error.message}`);
+    }
+}
+
 
 // --- Criação da Janela Principal ---
 function createWindow() {
     sendLogToWindow('[SYS] Criando janela principal...');
-    mainWindow = new BrowserWindow({
-        width: 1000,
-        height: 750,
-        webPreferences: {
-            preload: path.join(__dirname, 'preload.js'),
-            contextIsolation: true, // Importante para segurança com contextBridge
-            nodeIntegration: false // Manter desabilitado por segurança
-        }
-    });
-
+    mainWindow = new BrowserWindow({ width: 1000, height: 750, webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false } });
     mainWindow.loadFile('index.html');
+    // mainWindow.webContents.openDevTools(); // Para debug
+    mainWindow.on('closed', () => { mainWindow = null; });
 
-    // Opcional: Abrir DevTools para depuração
-    // mainWindow.webContents.openDevTools();
-
-    mainWindow.on('closed', () => {
-        sendLogToWindow('[SYS] Janela principal fechada.');
-        mainWindow = null; // Limpa a referência
-    });
-
-    // --- Verificação de Atualizações (APÓS janela pronta) ---
     mainWindow.webContents.on('did-finish-load', () => {
         sendLogToWindow('[SYS] Conteúdo da janela carregado.');
-        // Adiciona um delay para não impactar tanto a inicialização visual
-        setTimeout(() => {
-            sendLogToWindow('[Updater] Verificando por atualizações...');
-            updateAppStatus('Verificando atualizações...');
-            autoUpdater.checkForUpdatesAndNotify().catch(err => {
-                sendLogToWindow(`[Updater ERRO] Falha ao verificar/notificar atualizações: ${err.message}`);
-                updateAppStatus('Falha ao verificar atualizações.');
-            });
-        }, 5000); // Verifica 5 segundos após carregar a UI
+        // Carrega a configuração ANTES de verificar atualizações
+         loadConfig().then(() => {
+             // Verifica atualizações APÓS carregar UI e config
+            setTimeout(() => {
+                 sendLogToWindow('[Updater] Verificando por atualizações...');
+                 updateAppStatus('Verificando atualizações...');
+                 autoUpdater.checkForUpdatesAndNotify().catch(err => {
+                     sendLogToWindow(`[Updater ERRO] Falha ao verificar/notificar atualizações: ${err.message}`);
+                     updateAppStatus('Falha ao verificar atualizações.');
+                 });
+            }, 3000); // Delay menor agora que loadConfig é async
+        });
     });
 }
 
-// --- Lógica do WhatsApp ---
-function initializeWhatsApp() {
+// --- Lógica do WhatsApp (com loadConfig e saveConfig) ---
+async function destroyWhatsAppClient() { /* ... código igual ao anterior ... */
     if (client) {
-        sendLogToWindow('[WA] Cliente já existe. Tentando destruir antes de recriar.');
-        updateAppStatus('Reiniciando conexão...');
-        client.destroy().then(() => {
-             client = null;
-             initializeWhatsAppInternal();
-        }).catch(err => {
-             sendLogToWindow('[WA ERRO] Falha ao destruir cliente existente: ' + err.message);
-             client = null; // Tenta limpar mesmo com erro
-             initializeWhatsAppInternal();
-        });
-    } else {
-         initializeWhatsAppInternal();
+        sendLogToWindow('[WA] Tentando destruir cliente WhatsApp existente...');
+        try { await client.destroy(); sendLogToWindow('[WA] Cliente WhatsApp destruído.'); }
+        catch (err) { sendLogToWindow('[WA ERRO] Falha ao destruir: ' + err.message); }
+        finally { client = null; }
     }
 }
-
-function initializeWhatsAppInternal() {
+async function initializeWhatsApp() { /* ... código igual ao anterior ... */
+    await destroyWhatsAppClient();
+    initializeWhatsAppInternal();
+}
+function initializeWhatsAppInternal() { /* ... código quase igual, apenas a parte authStrategy foi mostrada antes ... */
     sendLogToWindow('[WA] Inicializando cliente WhatsApp...');
     updateAppStatus('Inicializando conexão WhatsApp...');
-
     client = new Client({
-        authStrategy: new LocalAuth(), // Usa autenticação local para não precisar escanear toda vez
-        puppeteer: {
-             headless: true, // Mude para false se precisar ver o browser (para debug)
-             args: [ // Otimizações e correções comuns
-                 '--no-sandbox',
-                 '--disable-setuid-sandbox',
-                 '--disable-dev-shm-usage',
-                 '--disable-accelerated-2d-canvas',
-                 '--no-first-run',
-                 '--no-zygote',
-                 // '--single-process', // Descomente se tiver problemas em ambientes específicos (pode impactar performance)
-                 '--disable-gpu'
-             ],
-         }
+        authStrategy: new LocalAuth({ dataPath: path.join(app.getPath('userData'), 'WhatsAppSession') }),
+        puppeteer: { headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-accelerated-2d-canvas', '--no-first-run', '--no-zygote', '--disable-gpu' ], }
     });
 
-    client.on('qr', (qr) => {
-        sendLogToWindow('[WA] QR Code recebido. Convertendo para exibição.');
-        updateAppStatus('QR Code Pronto - Escaneie no seu celular');
+    // --- Listeners do Cliente WA (qr, ready, authenticated, etc.) ---
+    // (Estes listeners são os mesmos do main.js anterior)
+    client.on('qr', (qr) => { /* ... código anterior ... */
+        sendLogToWindow('[WA] QR Code recebido.'); updateAppStatus('QR Code Pronto - Escaneie no seu celular');
         qrcode.toDataURL(qr, (err, url) => {
-            if (err) {
-                sendLogToWindow('[WA ERRO] Falha ao converter QR code: ' + err.message);
-                updateAppStatus('Erro ao gerar QR Code');
-                return;
-            }
-            if (mainWindow && mainWindow.webContents) {
-                mainWindow.webContents.send('display-qr', url);
-                sendLogToWindow('[WA] QR Code enviado para a interface.');
-            }
+            if (err) { sendLogToWindow('[WA ERRO] QR Conv: '+err.message); updateAppStatus('Erro QR'); return; }
+            if (mainWindow && !mainWindow.isDestroyed()) { mainWindow.webContents.send('display-qr', url); }
+            else { sendLogToWindow('[WA AVISO] Janela indisponível p/ QR.'); }
         });
     });
-
-    client.on('ready', () => {
-        sendLogToWindow('[WA] Cliente WhatsApp está pronto!');
-        updateAppStatus('Conectado!');
-        if (mainWindow && mainWindow.webContents) {
-            mainWindow.webContents.send('clear-qr'); // Limpa o QR da tela
-        }
-        // --- Listener de Mensagens (Exemplo Básico) ---
+    client.on('ready', () => { /* ... código anterior ... */
+        sendLogToWindow('[WA] Cliente WhatsApp pronto!'); updateAppStatus('Conectado!');
+        if (mainWindow && !mainWindow.isDestroyed()) { mainWindow.webContents.send('clear-qr'); }
         initializeMessageListener();
     });
-
-    client.on('authenticated', () => {
-        sendLogToWindow('[WA] Cliente autenticado com sucesso.');
-        updateAppStatus('Autenticado');
-        // O evento 'ready' geralmente vem logo depois, então limpamos o QR lá
+    client.on('authenticated', () => { sendLogToWindow('[WA] Autenticado.'); updateAppStatus('Autenticado'); });
+    client.on('auth_failure', (msg) => { /* ... código anterior ... */
+        sendLogToWindow(`[WA ERRO] Auth Falha: ${msg}`); updateAppStatus('Falha Autenticação');
+        if (mainWindow && !mainWindow.isDestroyed()) { mainWindow.webContents.send('clear-qr'); }
+        destroyWhatsAppClient(); // Destroi cliente em falha de auth
     });
-
-    client.on('auth_failure', (msg) => {
-        sendLogToWindow(`[WA ERRO] Falha na autenticação: ${msg}`);
-        updateAppStatus('Falha na Autenticação');
-        if (mainWindow && mainWindow.webContents) {
-             mainWindow.webContents.send('clear-qr');
-         }
+    client.on('disconnected', (reason) => { /* ... código anterior ... */
+        sendLogToWindow(`[WA] Desconectado: ${reason}`); updateAppStatus('Desconectado');
+        if (mainWindow && !mainWindow.isDestroyed()) { mainWindow.webContents.send('clear-qr'); }
+        client = null;
     });
+     client.on('loading_screen', (percent, message) => { sendLogToWindow(`[WA] Carregando: ${percent}% - ${message}`); updateAppStatus(`Carregando WA: ${percent}%`); });
 
-    client.on('disconnected', (reason) => {
-        sendLogToWindow(`[WA] Cliente desconectado: ${reason}`);
-        updateAppStatus('Desconectado');
-        if (mainWindow && mainWindow.webContents) {
-             mainWindow.webContents.send('clear-qr');
-        }
-        // Tentar reconectar ou limpar estado, dependendo da 'reason'
-        // Por exemplo, pode tentar chamar initializeWhatsApp() novamente
-        client = null; // Limpa referência para poder reiniciar
-    });
 
-    client.on('loading_screen', (percent, message) => {
-        sendLogToWindow(`[WA] Carregando: ${percent}% - ${message}`);
-        updateAppStatus(`Carregando WhatsApp: ${percent}%`);
-    });
-
+    // --- Inicialização ---
     sendLogToWindow('[WA] Iniciando conexão do cliente...');
-    client.initialize().catch(err => {
-        sendLogToWindow(`[WA ERRO] Erro fatal ao inicializar cliente: ${err.message}`);
-        updateAppStatus('Erro Crítico na Inicialização');
+    client.initialize().catch(err => { /* ... código anterior, tratando EPERM e outros erros ... */
+        const userDataPath = app.getPath('userData');
+        if(err.code === 'EPERM') { sendLogToWindow(`[WA ERRO FATAL] Permissão negada em ${userDataPath}: ${err.message}`); updateAppStatus(`Erro de Permissão`); dialog.showErrorBox('Erro de Permissão', `Permissão negada para escrever em ${userDataPath}.\nVerifique permissões ou antivirus.`); }
+        else { sendLogToWindow(`[WA ERRO FATAL] Inicialização: ${err.message}`); updateAppStatus('Erro Inicialização'); dialog.showErrorBox('Erro na Inicialização', `Erro ao iniciar WhatsApp: ${err.message}`); }
         client = null;
     });
 }
 
-// --- Listener de Mensagens de Exemplo ---
+// --- Listener de Mensagens (USANDO botConfig) ---
 function initializeMessageListener() {
-    if (!client) return;
+    if (!client) { sendLogToWindow('[WA AVISO] Tentativa listener s/ cliente.'); return; }
 
-    client.on('message_create', message => {
-        // Ouve mensagens enviadas PELO BOT para log (útil para debug)
-        if (message.fromMe) {
-            sendLogToWindow(`[WA Msg Enviada] Para: ${message.to} | Msg: ${message.body.substring(0, 50)}...`);
-        }
-    });
+    // Log de mensagens enviadas (debug)
+     client.on('message_create', message => { if (message.fromMe) { sendLogToWindow(`[WA Msg Enviada] Para: ${message.to} | Msg: ${message.body.substring(0,50)}...`); } });
 
+    // Processamento de mensagens recebidas
     client.on('message', async msg => {
-         sendLogToWindow(`[WA Msg Recebida] De: ${msg.from} | Msg: ${msg.body.substring(0, 50)}...`);
-         // Exemplo: Responder a '!ping' com 'pong'
-        if (msg.body === '!ping') {
-             try {
-                 await msg.reply('pong');
-                 sendLogToWindow(`[WA AutoReply] Respondido 'pong' para ${msg.from}`);
-             } catch (error) {
-                sendLogToWindow(`[WA ERRO] Falha ao responder para ${msg.from}: ${error.message}`);
-             }
-         }
+        if (msg.fromMe) return; // Ignora mensagens do próprio bot
 
-         // ADICIONE AQUI A LÓGICA PRINCIPAL DO SEU BOT
-         // (analisar mensagem, consultar API, responder, etc.)
+        const sender = msg.from;
+        const messageBody = msg.body;
+        sendLogToWindow(`[WA Msg Recebida] De: ${sender} | Msg: ${messageBody.substring(0, 50)}...`);
+
+        // **** LÓGICA DE RESPOSTA BASEADA NA CONFIGURAÇÃO ****
+        try {
+            // Verifica se a mensagem *exata* é uma chave na configuração
+            if (botConfig && typeof botConfig === 'object' && botConfig[messageBody]) {
+                const replyText = botConfig[messageBody];
+                await msg.reply(replyText);
+                sendLogToWindow(`[Bot Resposta] De: ${messageBody} | Para: ${replyText} (Destino: ${sender})`);
+            } else {
+                // Mensagem não encontrada na configuração, fazer outra coisa? Logar? Ignorar?
+                 // Ex: logar que não houve resposta configurada
+                 // sendLogToWindow(`[Bot Info] Nenhuma resposta configurada para: ${messageBody.substring(0, 30)}...`);
+            }
+        } catch (error) {
+            sendLogToWindow(`[Bot ERRO] Falha ao processar/responder msg de ${sender}: ${error.message}`);
+        }
+        // **** FIM DA LÓGICA DE RESPOSTA ****
     });
-     sendLogToWindow('[WA] Listener de mensagens ativado.');
+    sendLogToWindow('[WA] Listener de mensagens ativado.');
 }
 
-// --- Handlers do AutoUpdater ---
-autoUpdater.on('checking-for-update', () => {
-    sendLogToWindow('[Updater] Verificando atualização...');
-    updateAppStatus('Verificando atualizações...'); // Atualiza status na UI também
+// --- Handlers do AutoUpdater (iguais ao main.js anterior) ---
+autoUpdater.on('checking-for-update', () => { sendLogToWindow('[Updater] Verificando...'); updateAppStatus('Verificando atualizações...'); });
+autoUpdater.on('update-available', (info) => { sendLogToWindow(`[Updater] Disponível: v${info.version}`); updateAppStatus(`Atualização encontrada: v${info.version}`); });
+autoUpdater.on('update-not-available', (info) => { sendLogToWindow('[Updater] Não disponível.'); updateAppStatus('Você já tem a versão mais recente.'); });
+autoUpdater.on('error', (err) => { sendLogToWindow(`[Updater ERRO] ${err.message}`); updateAppStatus('Erro no atualizador.'); });
+autoUpdater.on('download-progress', (p) => { updateAppStatus(`Baixando atualização: ${p.percent.toFixed(0)}%`); sendLogToWindow(`[Updater] Baixando: ${p.percent.toFixed(2)}% (${(p.bytesPerSecond / 1024).toFixed(2)} KB/s)`); });
+autoUpdater.on('update-downloaded', (info) => { sendLogToWindow(`[Updater] Baixada: v${info.version}`); updateAppStatus('Atualização pronta!'); ipcMain.emit('show-update-restart-dialog'); });
+
+// --- Handlers IPC (Adicionados 'save-config' e 'load-config-request') ---
+ipcMain.on('start-bot', initializeWhatsApp); // Atalho
+
+ipcMain.on('check-for-update-request', () => { /* ... código anterior para check manual ... */
+    sendLogToWindow('[IPC] Comando "check-for-update-request" recebido.');
+    autoUpdater.checkForUpdates()
+    .catch(err => { sendLogToWindow(`[Updater ERRO] Manual Check: ${err.message}`); updateAppStatus('Erro check att.'); });
 });
 
-autoUpdater.on('update-available', (info) => {
-    sendLogToWindow(`[Updater] Atualização disponível! Versão: ${info.version}`);
-    updateAppStatus(`Atualização encontrada: v${info.version}`);
-    // O download começará automaticamente por padrão com checkForUpdatesAndNotify
+ipcMain.on('load-config-request', (event) => {
+    sendLogToWindow('[IPC] Comando "load-config-request" recebido.');
+    // Reenvia a configuração já carregada (ou recarrega se quiser forçar)
+     event.reply('config-loaded', botConfig);
 });
 
-autoUpdater.on('update-not-available', (info) => {
-    sendLogToWindow('[Updater] Nenhuma atualização disponível.');
-    updateAppStatus('Aplicativo atualizado.'); // Informa ao usuário
-});
-
-autoUpdater.on('error', (err) => {
-    sendLogToWindow(`[Updater ERRO] ${err.message}`);
-    updateAppStatus('Erro no atualizador.');
-});
-
-autoUpdater.on('download-progress', (progressObj) => {
-    let log_message = `[Updater] Baixando: ${progressObj.percent.toFixed(2)}%`;
-    log_message += ` (${(progressObj.bytesPerSecond / 1024).toFixed(2)} KB/s)`;
-    sendLogToWindow(log_message);
-    updateAppStatus(`Baixando atualização: ${progressObj.percent.toFixed(0)}%`); // Atualiza UI com progresso
-    // Opcional: Enviar progresso para uma barra na UI
-    // if (mainWindow && mainWindow.webContents) {
-    //     mainWindow.webContents.send('update-download-progress', progressObj.percent);
-    // }
-});
-
-autoUpdater.on('update-downloaded', (info) => {
-    sendLogToWindow(`[Updater] Atualização baixada (Versão: ${info.version}). Pronta para instalar.`);
-    updateAppStatus('Atualização pronta para instalar!');
-    // Envia um sinal para a própria main thread (ou poderia enviar para o renderer) para mostrar o diálogo
-    ipcMain.emit('show-update-restart-dialog');
-});
-
-// --- Handlers IPC (Comunicação Renderer -> Main) ---
-
-// Ouve o comando do botão "Iniciar Bot" vindo do renderer
-ipcMain.on('start-bot', (event) => {
-    sendLogToWindow('[IPC] Comando "start-bot" recebido do renderer.');
-    initializeWhatsApp(); // Chama a função para iniciar ou reiniciar o WhatsApp
-});
-
-// Handler para mostrar diálogo de reinicialização (chamado pelo evento 'update-downloaded')
-ipcMain.on('show-update-restart-dialog', async (event) => {
-   sendLogToWindow('[Updater] Solicitando confirmação do usuário para reiniciar.');
-   try {
-       const result = await dialog.showMessageBox(mainWindow, { // Associa à janela principal
-            type: 'info',
-            title: 'Atualização Pronta',
-            message: 'Uma nova versão do Auto Wpp-Bot foi baixada. Deseja reiniciar o aplicativo e instalar agora?',
-            buttons: ['Reiniciar Agora', 'Mais Tarde'],
-            defaultId: 0, // Botão Reiniciar é o padrão
-            cancelId: 1   // Botão Mais Tarde cancela
-        });
-
-       if (result.response === 0) {
-            sendLogToWindow("[Updater] Usuário aceitou reiniciar. Encerrando e instalando...");
-            // Fecha o cliente WA de forma graciosa se possível antes de sair
-            if (client) {
-                await client.destroy().catch(e => sendLogToWindow("[WA ERRO] Falha ao destruir cliente antes de atualizar: "+e.message));
-            }
-            autoUpdater.quitAndInstall();
-        } else {
-             sendLogToWindow("[Updater] Usuário optou por instalar mais tarde.");
-             updateAppStatus('Atualização será instalada na próxima vez que fechar o app.');
-         }
-   } catch(error) {
-       sendLogToWindow(`[Updater ERRO] Falha ao mostrar diálogo de reinício: ${error.message}`);
-   }
+ipcMain.on('save-config', (event, configString) => {
+    sendLogToWindow('[IPC] Comando "save-config" recebido.');
+    saveConfig(configString); // Chama a função para salvar no disco e memória
 });
 
 
-// --- Ciclo de Vida da Aplicação Electron ---
+ipcMain.on('show-update-restart-dialog', async (event) => { /* ... código do diálogo igual ao anterior ... */
+    sendLogToWindow('[Updater] Solicitando reinício.');
+    if (!mainWindow || mainWindow.isDestroyed()) { sendLogToWindow('[Updater AVISO] Janela não existe p/ diálogo.'); return; }
+    try {
+        const { response } = await dialog.showMessageBox(mainWindow, { type: 'info', title: 'Atualização Pronta', message: 'Nova versão baixada. Reiniciar e instalar agora?', buttons: ['Reiniciar Agora', 'Mais Tarde'], defaultId: 0, cancelId: 1 });
+        if (response === 0) { sendLogToWindow("[Updater] Usuário aceitou. Reiniciando..."); await destroyWhatsAppClient(); autoUpdater.quitAndInstall(); }
+        else { sendLogToWindow("[Updater] Usuário adiou."); updateAppStatus('Att será instalada ao sair.'); }
+    } catch(error) { sendLogToWindow(`[Updater ERRO] Diálogo: ${error.message}`); }
+});
 
-// Este método será chamado quando Electron terminar de inicializar
-// e estiver pronto para criar janelas do navegador.
-// Algumas APIs só podem ser usadas depois que este evento ocorre.
+
+// --- Ciclo de Vida App (Com loadConfig no início) ---
 app.whenReady().then(() => {
     sendLogToWindow('=============== [SYS] Aplicação Iniciada ===============');
-    createWindow();
-
-    // Lida com ativação no macOS (se não houver janelas, cria uma)
-    app.on('activate', () => {
-        if (BrowserWindow.getAllWindows().length === 0) {
-            sendLogToWindow('[SYS] Aplicação ativada (macOS) - recriando janela.');
-            createWindow();
-        }
-    });
+     // Carrega a config ANTES de criar a janela, para já estar disponível
+    loadConfig().finally(() => {
+         createWindow(); // Cria janela após carregar config (ou falhar)
+        app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
+     });
 });
 
-// Encerrar quando todas as janelas forem fechadas, exceto no macOS.
-app.on('window-all-closed', () => {
-    // No macOS, é comum aplicações e suas barras de menu
-    // continuarem ativas até que o usuário explicitamente encerre com Cmd + Q
-    if (process.platform !== 'darwin') {
-        sendLogToWindow('[SYS] Todas as janelas fechadas. Encerrando aplicação.');
-        if (client) {
-             client.destroy().catch(e => sendLogToWindow("[WA ERRO] Falha ao destruir cliente ao fechar app: "+e.message))
-            .finally(() => app.quit()); // Garante que o app saia mesmo se destroy falhar
-        } else {
-             app.quit();
-        }
-    } else {
-        sendLogToWindow('[SYS] Todas as janelas fechadas (macOS) - aplicação continua ativa.');
-         // No mac talvez ainda queira desconectar o whatsapp?
-         if (client) {
-            client.destroy().catch(e => sendLogToWindow("[WA ERRO] Falha ao destruir cliente ao fechar janelas no macOS: "+e.message));
-            client = null;
-        }
-    }
+app.on('window-all-closed', async () => { /* ... código anterior para fechar WA e app ... */
+    sendLogToWindow('[SYS] Todas janelas fechadas.'); await destroyWhatsAppClient();
+    if (process.platform !== 'darwin') { sendLogToWindow('[SYS] Encerrando.'); app.quit(); }
+    else { sendLogToWindow('[SYS] App ativo (macOS).'); }
 });
-
-// --- Tratamento de Erros Não Capturados (Opcional mas recomendado) ---
-process.on('uncaughtException', (error, origin) => {
-   log.error('!!!!!!!!!!!!!! EXCEÇÃO NÃO TRATADA !!!!!!!!!!!!!!');
-   log.error('Erro:', error);
-   log.error('Origem:', origin);
-   sendLogToWindow(`[ERRO CRÍTICO] ${error.message} (Origem: ${origin}). Verifique main.log.`);
-   // Em produção, você pode querer mostrar um diálogo mais amigável e/ou tentar reiniciar o app.
-   // Cuidado ao continuar após um erro não tratado, o estado pode estar inconsistente.
-});
-process.on('unhandledRejection', (reason, promise) => {
-    log.error('!!!!!!!!!!!!!! REJEIÇÃO NÃO TRATADA !!!!!!!!!!!!!!');
-    log.error('Razão:', reason);
-    sendLogToWindow(`[ERRO ASSÍNCRONO] ${reason}. Verifique main.log.`);
+app.on('before-quit', async () => { /* ... código anterior para limpar antes de sair ... */
+    sendLogToWindow('[SYS] Evento before-quit.'); await destroyWhatsAppClient(); sendLogToWindow('[SYS] Limpeza concluída.');
 });
 
 
-sendLogToWindow('[SYS] main.js carregado.'); // Log inicial para saber que o script foi lido
+// --- Tratamento de Erros (igual anterior) ---
+process.on('uncaughtException', (error, origin) => { /* ... código anterior ... */ log.error('!!!!!!!!!!!!!! UNC EXCEPTION !!!!!!!!!!!!!!', error, origin); sendLogToWindow(`[ERR CRIT] ${error.message}`); if(mainWindow && !mainWindow.isDestroyed()) dialog.showErrorBox('Erro Crítico', `Erro:\n${error.message}\n\nRecomendamos fechar e reabrir.`);});
+process.on('unhandledRejection', (reason, promise) => { /* ... código anterior ... */ log.error('!!!!!!!!!!!!!! UNH REJECTION !!!!!!!!!!!!!!', reason); sendLogToWindow(`[ERR ASYNC] ${reason}`);});
+
+sendLogToWindow('[SYS] main.js carregado.');

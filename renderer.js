@@ -1,11 +1,18 @@
+// ./renderer.js
+
 // Referências aos Elementos HTML
 const startButton = document.getElementById('startButton');
 const statusElement = document.getElementById('status');
 const qrCodeImage = document.getElementById('qr-code-image');
 const qrPlaceholder = document.getElementById('qr-placeholder');
 const logsElement = document.getElementById('logs');
+const checkUpdateButton = document.getElementById('checkUpdateButton');
+// Novas referências para configuração
+const configTextArea = document.getElementById('configTextArea');
+const saveConfigButton = document.getElementById('saveConfigButton');
 
-// Estado inicial do botão
+
+// Estado inicial
 let isBotStartingOrRunning = false;
 
 function updateButtonState(isStarting) {
@@ -14,97 +21,136 @@ function updateButtonState(isStarting) {
     startButton.textContent = isStarting ? 'Iniciando...' : 'Iniciar Bot';
 }
 
-// --- Envia Comando para Iniciar o Bot ---
+// Adiciona mensagens de log à área de logs
+function addLog(logMessage) {
+     console.log("Renderer: Log -", logMessage);
+     const logEntry = document.createElement('div');
+     logEntry.className = 'log-entry';
+     logEntry.textContent = logMessage;
+     logsElement.appendChild(logEntry);
+     logsElement.scrollTop = logsElement.scrollHeight;
+}
+
+// --- Enviar Comandos para o Main Process ---
+
+// Iniciar Bot
 startButton.addEventListener('click', () => {
-    if (isBotStartingOrRunning) return; // Previne cliques múltiplos
-
+    if (isBotStartingOrRunning) return;
     console.log("Renderer: Botão Iniciar pressionado.");
-    updateButtonState(true); // Desabilita o botão e muda texto
-
-    // Limpa área do QR e status inicial
+    updateButtonState(true);
     qrCodeImage.src = '';
     qrCodeImage.style.display = 'none';
     qrPlaceholder.textContent = 'Inicializando...';
     qrPlaceholder.style.display = 'inline';
     statusElement.textContent = 'Inicializando...';
-    statusElement.className = 'status status-initializing'; // Classe CSS para status
+    statusElement.className = 'status status-initializing';
     addLog("Solicitando inicialização do bot...");
-
-    // Envia comando para o Main Process via API do preload
     window.electronAPI.send('start-bot');
 });
 
-// --- Recebe Atualizações do Main Process ---
+// Verificar Atualizações
+checkUpdateButton.addEventListener('click', () => {
+    console.log("Renderer: Botão Verificar Atualizações pressionado.");
+    addLog("Solicitando verificação de atualizações...");
+    // Opcional: Desabilitar botão temporariamente
+    // checkUpdateButton.disabled = true;
+    window.electronAPI.send('check-for-update-request');
+});
 
-// Atualiza o texto e a cor do Status
+// Salvar Configuração
+saveConfigButton.addEventListener('click', () => {
+    const configString = configTextArea.value;
+    console.log("Renderer: Botão Salvar Configuração pressionado.");
+    addLog("Tentando salvar configuração...");
+     try {
+         // Tenta validar o JSON minimamente no lado do renderer
+        JSON.parse(configString);
+        window.electronAPI.send('save-config', configString);
+        // Feedback visual temporário (opcional)
+         saveConfigButton.textContent = 'Salvando...';
+        setTimeout(() => { saveConfigButton.textContent = 'Salvar Configuração'; }, 1500);
+    } catch (e) {
+        addLog(`ERRO: Configuração inválida. Verifique o formato JSON. Detalhes: ${e.message}`);
+        alert(`Erro na configuração!\nO texto inserido não é um JSON válido.\n\nDetalhe: ${e.message}\n\nVerifique chaves e valores entre aspas, vírgulas corretas, etc.`);
+     }
+});
+
+
+// --- Receber Atualizações do Main Process ---
+
+// Log
+window.electronAPI.on('log-message', addLog);
+
+// Status
 window.electronAPI.on('update-status', (message) => {
     console.log("Renderer: Status recebido -", message);
     statusElement.textContent = message;
-
-    // Atualiza a classe CSS para mudar a cor do background/texto do status
     const msgLower = message.toLowerCase();
-    if (msgLower.includes('conectado')) {
-        statusElement.className = 'status status-connected';
-        updateButtonState(false); // Habilita botão se conectado (talvez não queira?)
-    } else if (msgLower.includes('autenticado')) {
-        statusElement.className = 'status status-authenticated';
-    } else if (msgLower.includes('inicializando')) {
-        statusElement.className = 'status status-initializing';
-        updateButtonState(true); // Mantem botão desabilitado
-    } else if (msgLower.includes('gerando qr')) {
-         statusElement.className = 'status status-generating-qr';
-         updateButtonState(true);
-     } else if (msgLower.includes('qr code pronto')) {
-          statusElement.className = 'status status-scanning';
-          updateButtonState(true);
-    } else if (msgLower.includes('desconectado') || msgLower.includes('erro') || msgLower.includes('falha')) {
-        statusElement.className = 'status status-error'; // Ou .status-disconnected
-        updateButtonState(false); // Permite tentar iniciar novamente
-        // Resetar QR se desconectar
-        qrCodeImage.src = '';
-        qrCodeImage.style.display = 'none';
-        qrPlaceholder.textContent = 'Desconectado. Clique para tentar novamente.';
-        qrPlaceholder.style.display = 'inline';
-    } else {
-        statusElement.className = 'status status-default'; // Um estado padrão
+    if (msgLower.includes('conectado')) statusElement.className = 'status status-connected';
+    else if (msgLower.includes('autenticado')) statusElement.className = 'status status-authenticated';
+    else if (msgLower.includes('inicializando') || msgLower.includes('carregando whatsapp')) statusElement.className = 'status status-initializing';
+    else if (msgLower.includes('gerando qr') || msgLower.includes('qr code pronto')) statusElement.className = 'status status-generating-qr'; // ou status-scanning
+    else if (msgLower.includes('qr code pronto')) statusElement.className = 'status status-scanning';
+    else if (msgLower.includes('desconectado') || msgLower.includes('erro') || msgLower.includes('falha') || msgLower.includes('permission')) statusElement.className = 'status status-error';
+    else if (msgLower.includes('já tem a versão mais recente') || msgLower.includes('aplicativo atualizado')) statusElement.className = 'status status-connected'; // Verde se não tem att nova
+    else statusElement.className = 'status status-default';
+
+    // Reabilitar botão de start/verifica update se ocorreu erro ou desconectou
+     if (msgLower.includes('desconectado') || msgLower.includes('erro') || msgLower.includes('falha') || msgLower.includes('permission')) {
+         updateButtonState(false);
+         // checkUpdateButton.disabled = false; // Reabilitar se desabilitou antes
+         qrCodeImage.src = '';
+         qrCodeImage.style.display = 'none';
+         qrPlaceholder.textContent = 'Erro ou desconectado. Tente iniciar novamente.';
+         qrPlaceholder.style.display = 'inline';
+     }
+
+     // Reabilitar botão de check update em outros casos seguros também
+     if (msgLower.includes('aplicativo atualizado') || msgLower.includes('já tem a versão mais recente') || msgLower.includes('atualização encontrada')) {
+         // checkUpdateButton.disabled = false;
+     }
+
+});
+
+// QR Code
+window.electronAPI.on('display-qr', (imageDataUrl) => {
+    console.log("Renderer: Recebido QR Data URL.");
+    qrCodeImage.src = imageDataUrl;
+    qrCodeImage.style.display = 'block';
+    qrPlaceholder.style.display = 'none';
+    addLog("QR Code recebido. Escaneie com o app WhatsApp no seu celular.");
+});
+
+// Limpar QR
+window.electronAPI.on('clear-qr', () => {
+    console.log("Renderer: Comando para limpar QR.");
+    qrCodeImage.src = '';
+    qrCodeImage.style.display = 'none';
+    qrPlaceholder.textContent = 'Conectado!';
+    qrPlaceholder.style.display = 'inline';
+    addLog("Área do QR Code limpa (Conectado).");
+});
+
+// Carregar Configuração (Recebida do Main)
+window.electronAPI.on('config-loaded', (configData) => {
+    console.log("Renderer: Configuração recebida do Main.");
+    try {
+        // Formata o JSON para exibição indentada no textarea
+        const configString = JSON.stringify(configData || {}, null, 2); // Usa 2 espaços para indentar
+        configTextArea.value = configString;
+        addLog("Configuração de respostas carregada na interface.");
+    } catch (e) {
+        addLog("ERRO: Falha ao formatar/exibir configuração recebida.");
+        configTextArea.value = "Erro ao carregar configuração.";
     }
 });
 
-// Exibe a IMAGEM QR Code recebida (como Data URL)
-window.electronAPI.on('display-qr', (imageDataUrl) => {
-    console.log("Renderer: Recebido QR Data URL para exibição.");
-    qrCodeImage.src = imageDataUrl;         // <-- Define o src da TAG IMG!
-    qrCodeImage.style.display = 'block';    // <-- Mostra a imagem
-    qrPlaceholder.style.display = 'none'; // <-- Esconde o texto placeholder
-    addLog("QR Code recebido e exibido.");
-});
-
-// Limpa a área do QR Code (quando conecta ou deslogga)
-window.electronAPI.on('clear-qr', () => {
-    console.log("Renderer: Comando para limpar QR recebido.");
-    qrCodeImage.src = '';                    // Limpa o src da imagem
-    qrCodeImage.style.display = 'none';    // Esconde a imagem
-    qrPlaceholder.textContent = 'Conectado!'; // Muda texto placeholder
-    qrPlaceholder.style.display = 'inline';// Mostra placeholder
-    addLog("Área do QR Code limpa (provavelmente conectado).");
-});
-
-// Adiciona mensagens de log à área de logs
-function addLog(logMessage) {
-     console.log("Renderer: Log -", logMessage); // Log no console do devtools tb
-     const logEntry = document.createElement('div');
-     logEntry.className = 'log-entry';
-     logEntry.textContent = logMessage; // Timestamp já vem do main.js
-     logsElement.appendChild(logEntry);
-     // Auto-scroll para a última mensagem
-     logsElement.scrollTop = logsElement.scrollHeight;
-}
-window.electronAPI.on('log-message', addLog);
-
-
-// Mensagem inicial para o usuário
+// --- Inicialização do Renderer ---
 window.addEventListener('DOMContentLoaded', () => {
      addLog("Interface carregada. Aguardando ação.");
-})
+     // Solicita a configuração atual ao carregar a interface
+     addLog("Solicitando configuração de respostas...");
+     window.electronAPI.send('load-config-request');
+});
 
 console.log("Renderer script carregado e listeners ativos.");

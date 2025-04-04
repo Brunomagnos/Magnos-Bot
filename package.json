@@ -1,6 +1,6 @@
 {
   "name": "MagnosBot",
-  "version": "1.0.2", // <-- INCREMENTE A VERSÃO A CADA NOVA PUBLICAÇÃO
+  "version": "1.0.4",
   "description": "Bot de atendimento automático para WhatsApp",
   "main": "main.js",
   "scripts": {
@@ -11,53 +11,50 @@
   "keywords": [
     "whatsapp",
     "bot",
-    "electron"
-    // Adicione mais keywords relevantes
+    "electron",
+    "automação"
   ],
   "author": "Magnos (com assistência AI)",
-  "license": "ISC", // Considere uma licença real se for distribuir publicamente
+  "license": "ISC",
   "devDependencies": {
-    "electron": "^29.4.6", // Use a versão mais recente compatível ou a que você está usando
-    "electron-builder": "^24.13.3" // Use a versão mais recente compatível
-    // Adicione outras devDependencies se usar (ex: linters, etc.)
+    "electron": "^29.4.6",
+    "electron-builder": "^24.13.3"
   },
   "dependencies": {
-    "electron-log": "^5.1.7", // <-- Adicionado aqui! Verifique a versão se desejar (npm show electron-log version)
-    "electron-updater": "^6.2.1", // Verifique a versão mais recente se desejar
+    "electron-log": "^5.1.7",
+    "electron-updater": "^6.2.1",
     "qrcode": "^1.5.3",
-    "whatsapp-web.js": "^1.27.0" // <-- Confirme se esta é a versão correta baseada no seu package-lock ou necessidades
-    // Adicione outras dependências se usar
+    "whatsapp-web.js": "^1.27.0"
   },
   "build": {
     "appId": "com.magnos.autowppbot",
     "productName": "Auto Wpp-Bot Magnos",
-    "asar": true, // Recomendado habilitar para produção (a menos que tenha problemas específicos)
+    "asar": true,
     "win": {
-      "target": "nsis", // Cria um instalador NSIS (padrão para Windows)
-      "icon": "build/icon.ico" // <-- IMPORTANTE: Crie um ícone .ico e coloque o caminho aqui
+      "target": "nsis",
+      "icon": "build/icon.ico"
     },
-    "nsis": { // Configurações específicas do instalador NSIS
-      "oneClick": false, // Permite ao usuário escolher pasta de instalação
+    "nsis": {
+      "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "perMachine": false // Instala apenas para o usuário atual (mais seguro, não exige admin)
+      "perMachine": false
     },
     "directories": {
-      "buildResources": "build", // Pasta para recursos de build (como o ícone)
-      "output": "dist" // Pasta onde os instaladores serão gerados
+      "buildResources": "build",
+      "output": "dist"
     },
-    "files": [ // Opcional: Liste explicitamente o que incluir (melhora o tamanho final)
-      "**/*", // Inclui tudo por padrão
+    "files": [
+      "**/*",
       "!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
       "!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}",
       "!**/node_modules/*.d.ts",
       "!**/node_modules/.bin",
-      "!**/*.{iml,o,hprof,orig,pyc,pyo,rbc,swp,csproj,sln,suo,xproj,cc}" ,
-      "!**/.*", // Exclui arquivos ocultos como .git, .vscode, etc. da build final
-      "!build/", // Não inclui a pasta build nos recursos do app
-      "!dist/", // Não inclui a pasta dist nos recursos do app
+      "!**/*.{iml,o,hprof,orig,pyc,pyo,rbc,swp,csproj,sln,suo,xproj,cc}",
+      "!**/.*",
+      "!build/",
+      "!dist/",
       "!.gitignore",
       "!README.md"
-      // Se o asar for true, não precisa de asarUnpack aqui a menos que algo precise ficar fora
     ],
     "publish": {
       "provider": "github",
