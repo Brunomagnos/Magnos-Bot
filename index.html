@@ -8,174 +8,173 @@
         /* === Reset & Base === */
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #eef0f1; /* Fundo cinza claro moderno */
-            color: #333;
+            font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            background-color: #f0f2f5; /* Fundo estilo WhatsApp Web */
+            color: #4a4a4a; /* Texto principal mais escuro */
             display: flex;
             flex-direction: column;
             height: 100vh;
-            overflow: hidden; /* Evitar barras de rolagem no body */
-            font-size: 14px; /* Tamanho base */
+            overflow: hidden;
+            font-size: 14px;
         }
         /* === Header === */
         .app-header {
-            background: linear-gradient(90deg, #0b5d54, #128c7e); /* Gradiente verde */
-            color: white;
-            padding: 12px 25px;
-            font-size: 1.3em;
+            background: #005e54; /* Verde mais escuro, cor sólida */
+            color: #ffffff;
+            padding: 14px 25px;
+            font-size: 1.25em;
             font-weight: 600;
-            box-shadow: 0 3px 6px rgba(0,0,0,0.15);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
             z-index: 10;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
         }
         /* === Main Layout === */
         .main-container {
             display: flex;
-            flex-grow: 1;
+            flex-grow: 1; /* Ocupa espaço vertical */
             padding: 20px;
-            gap: 20px; /* Espaçamento maior */
-            overflow: hidden;
+            gap: 20px;
+            overflow: hidden; /* Essencial para conter painéis */
         }
-        .panel {
-            background-color: #ffffff;
-            border-radius: 10px; /* Bordas mais arredondadas */
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            padding: 25px; /* Mais padding interno */
+        /* --- Colunas --- */
+        .left-column {
+            flex: 0 0 350px; /* Largura fixa */
             display: flex;
             flex-direction: column;
-            overflow: hidden; /* Mantém importante */
+            gap: 20px;
         }
-        /* === Painéis específicos === */
-        .left-panel { flex: 0 0 360px; gap: 20px; display: flex; flex-direction: column; }
-        .right-panel { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 20px; }
-        .qr-panel { align-items: center; justify-content: center; text-align: center; }
-        .log-panel, .config-panel { flex-grow: 1; }
+        .right-column {
+            flex: 1; /* Ocupa espaço restante */
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            min-width: 0; /* Impede que o conteúdo force alargamento */
+        }
+        /* === Painéis === */
+        .panel {
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.07);
+            border: 1px solid #e9edef;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+             /* Overflow gerenciado pelo painel específico */
+        }
+        /* --- Painéis específicos --- */
+        .panel-control { flex-shrink: 0; } /* Não encolhe */
+        .panel-connection { flex-grow: 1; align-items: center; justify-content: center; text-align: center; overflow: hidden; }
+        .panel-config { flex-basis: 45%; flex-shrink: 0; overflow: hidden; } /* Não deixa logs espremerem muito */
+        .panel-logs { flex-grow: 1; flex-basis: 55%; overflow: hidden; min-height: 150px; /* Altura mínima */ }
 
         /* === Títulos === */
         h2 {
-            font-size: 1.2em;
+            font-size: 1.1em; /* Ligeiramente menor */
             font-weight: 600;
-            color: #1a535c; /* Azul petróleo escuro */
+            color: #111b21; /* Cinza escuro Wpp */
             margin-top: 0;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             padding-bottom: 10px;
-            border-bottom: 2px solid #e8e8e8; /* Borda mais sutil */
+            border-bottom: 1px solid #e9edef;
         }
         /* === Botões === */
-        button {
-            padding: 10px 18px;
-            font-size: 0.95em;
-            font-weight: 500;
-            cursor: pointer;
-            color: white;
-            border: none;
-            border-radius: 6px; /* Levemente arredondado */
-            transition: all 0.2s ease;
-            text-align: center;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            margin-bottom: 8px;
-        }
-        button:disabled { background-color: #b0bec5; color: #607d8b; cursor: not-allowed; box-shadow: none;}
-        button:active { transform: scale(0.97); box-shadow: inset 0 1px 2px rgba(0,0,0,0.1); }
-
-        #startButton { background-color: #2ecc71; /* Verde mais vivo */}
-        #startButton:hover:not(:disabled) { background-color: #27ae60; }
-
-        #checkUpdateButton, #pauseButton, #saveConfigButton { background-color: #3498db; /* Azul */ }
-        #checkUpdateButton:hover:not(:disabled),
-        #saveConfigButton:hover:not(:disabled),
-        #pauseButton:hover:not(:disabled) { background-color: #2980b9; }
-
-        #pauseButton.paused { background-color: #f39c12; /* Laranja quando pausado */ }
-        #pauseButton.paused:hover:not(:disabled) { background-color: #e67e22; }
+        button { padding: 9px 15px; font-size: 0.92em; font-weight: 500; cursor: pointer; color: white; border: none; border-radius: 5px; transition: background-color 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease; text-align: center; box-shadow: 0 1px 1px rgba(0,0,0,0.08); margin-bottom: 6px; background-color: #00a884; /* Verde Principal */ }
+        button:hover:not(:disabled) { background-color: #008069; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        button:active:not(:disabled) { transform: scale(0.98); background-color: #00705c; }
+        button:disabled { background-color: #d6dce0; color: #85939f; cursor: not-allowed; box-shadow: none; }
+        #startButton { background-color: #00a884; /* Verde Principal */ font-size: 1em; padding: 10px 20px;}
+        #pauseButton.paused { background-color: #ffbf00; /* Amarelo alerta */ color: #4d3800; }
+        #pauseButton.paused:hover:not(:disabled) { background-color: #fca500; }
+        #checkUpdateButton { background-color: #5a7d90; /* Cinza azulado */ }
+        #checkUpdateButton:hover:not(:disabled) { background-color: #486373; }
+        #saveConfigButton { background-color: #00a884; } /* Verde para salvar */
 
         /* === Status === */
-        #status-area { font-size: 0.98em; text-align: center; margin-bottom: 15px;}
-        .status { font-weight: 600; padding: 5px 12px; border-radius: 16px; display: inline-block; margin-top: 5px; transition: all 0.3s ease; font-size: 0.9em;}
-        .status-disconnected { background-color: #e74c3c; color: white; border: 1px solid #c0392b;} /* Vermelho */
-        .status-initializing, .status-generating-qr { background-color: #f1c40f; color: #333; border: 1px solid #f39c12;} /* Amarelo */
-        .status-scanning, .status-loading { background-color: #3498db; color: white; border: 1px solid #2980b9;} /* Azul */
-        .status-authenticated, .status-connected { background-color: #2ecc71; color: white; border: 1px solid #27ae60;} /* Verde */
-        .status-error { background-color: #c0392b; color: white; border: 1px solid #a13124;} /* Vermelho escuro */
-        .status-paused { background-color: #e67e22; color: white; border: 1px solid #d35400;} /* Laranja */
-        .status-default { background-color: #95a5a6; color: white; border: 1px solid #7f8c8d; } /* Cinza */
+        #status-area { font-size: 0.95em; text-align: center; margin-bottom: 15px;}
+        .status { font-weight: 600; padding: 5px 12px; border-radius: 16px; display: inline-block; margin-top: 5px; font-size: 0.88em; border: 1px solid transparent; }
+        .status-disconnected { background-color: #ffebee; color: #c62828; border-color: #f7cac9;} /* Vermelho claro */
+        .status-initializing, .status-generating-qr, .status-loading { background-color: #fff9c4; color: #8f5c00; border-color: #fce38a;} /* Amarelo claro */
+        .status-scanning { background-color: #e3f2fd; color: #1565c0; border-color: #b4dcf9;} /* Azul claro */
+        .status-authenticated, .status-connected { background-color: #e8f5e9; color: #2e7d32; border-color: #c8e6c9;} /* Verde claro */
+        .status-error { background-color: #ffcdd2; color: #b71c1c; border-color: #f09da4;} /* Rosa erro */
+        .status-paused { background-color: #fff3e0; color: #ef6c00; border-color: #ffcc80;} /* Laranja claro */
+        .status-default { background-color: #eceff1; color: #546e7a; border-color: #cfd8dc; } /* Cinza claro */
 
-        /* === QR Code / Painel Conectado === */
-        #qr-code-container { /* Flex definido no painel */ background-color: #f8f9fa; border-radius: 8px; padding: 15px; border: 1px solid #dee2e6; min-height: 220px; display: flex; align-items: center; justify-content: center; flex-direction: column; }
-        #qr-code-image { max-width: 100%; max-height: 220px; display: none; border: none; background-color: white; padding: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-        #qr-placeholder { color: #6c757d; font-size: 0.95em; text-align: center; }
-
-        #connected-info-panel { /* Esconder por padrão */ display: none; align-items: center; justify-content: center; text-align: center; }
-        #connected-info-panel .icon { font-size: 4em; color: #2ecc71; margin-bottom: 15px; }
-        #connected-info-panel p { font-size: 1.1em; color: #555; margin-bottom: 20px;}
+        /* === Conexão Area (QR/Conectado) === */
+        #qr-code-container { /* Usado para ambos, estilo vem do JS */ display: flex; flex-grow: 1; width: 100%; align-items: center; justify-content: center; flex-direction: column; padding: 15px; background-color: #fff; border-radius: 6px; border: 1px dashed #d6dce0; }
+        #qr-code-image { max-width: 90%; max-height: 250px; height: auto; display: none; border: none; background-color: white; padding: 5px; box-shadow: 0 1px 5px rgba(0,0,0,0.1); margin-bottom: 10px;}
+        #qr-placeholder { color: #667781; font-size: 0.95em; }
+        #connected-info-panel { /* Começa escondido */ display: none; flex-grow: 1; width: 100%; align-items: center; justify-content: center; flex-direction: column; background-color: #e8f5e9; border-radius: 6px; padding: 20px; border: 1px solid #a5d6a7;}
+        #connected-info-panel .icon { font-size: 3em; color: #4caf50; margin-bottom: 10px; }
+        #connected-info-panel p { font-size: 1.05em; color: #388e3c; font-weight: 500; }
+        #connected-info-panel small { font-size: 0.9em; color: #66bb6a; margin-top: 5px;}
 
         /* === Configuração === */
-        #configDescription { font-size: 0.9em; color: #555; margin-bottom: 12px; line-height: 1.4; background-color: #f8f9fa; padding: 8px; border-radius: 4px; border: 1px dashed #ccc; }
-        #configTextArea { flex-grow: 1; width: 100%; font-family: Consolas, 'Courier New', monospace; font-size: 0.9em; border: 1px solid #bdc3c7; border-radius: 6px; padding: 12px; margin-bottom: 12px; resize: vertical; min-height: 150px; }
+        #configDescription { font-size: 0.9em; color: #667781; margin-bottom: 12px; line-height: 1.5; background-color: #f0f2f5; padding: 10px; border-radius: 4px; }
+        #configTextArea { display: block; flex-grow: 1; width: 100%; font-family: Consolas, 'Courier New', monospace; font-size: 0.9em; border: 1px solid #d6dce0; border-radius: 6px; padding: 12px; margin-bottom: 12px; resize: vertical; min-height: 150px; background-color: #fff; color: #111b21;}
+        #saveConfigButton { width: 100%; } /* Botão largura total */
 
         /* === Barra de Progresso === */
-        #updateProgressContainer { margin-top: 10px; display: none; /* Começa escondido */ }
-        #updateProgressLabel { font-size: 0.85em; color: #555; margin-bottom: 4px; display: block; text-align: center;}
-        #updateProgressBar { width: 100%; height: 8px; -webkit-appearance: none; appearance: none; border: none; border-radius: 4px; overflow: hidden; background-color: #ecf0f1; }
-        #updateProgressBar::-webkit-progress-bar { background-color: #ecf0f1; border-radius: 4px; }
-        #updateProgressBar::-webkit-progress-value { background-color: #3498db; border-radius: 4px 0 0 4px; transition: width 0.1s linear; }
-        #updateProgressBar::-moz-progress-bar { background-color: #3498db; border-radius: 4px; }
+        #updateProgressContainer { margin-top: 10px; padding-top: 10px; border-top: 1px solid #e9edef; display: none; }
+        #updateProgressLabel { font-size: 0.8em; color: #667781; margin-bottom: 4px; display: block; text-align: center; }
+        #updateProgressBar { width: 100%; height: 6px; -webkit-appearance: none; appearance: none; border: none; border-radius: 3px; overflow: hidden; background-color: #e9edef; }
+        #updateProgressBar::-webkit-progress-bar { background-color: #e9edef; border-radius: 3px; }
+        #updateProgressBar::-webkit-progress-value { background-color: #00a884; transition: width 0.1s linear; }
+        #updateProgressBar::-moz-progress-bar { background-color: #00a884; border-radius: 3px; }
 
         /* === Logs === */
-        .log-panel { flex-grow: 1; min-height: 200px; /* Garante espaço visível */ }
-        #logs { flex-grow: 1; overflow-y: auto; background-color: #f1f3f5; border: 1px solid #dee2e6; border-radius: 6px; padding: 12px; font-family: 'Fira Code', Consolas, monospace; /* Fonte mono mais moderna */ font-size: 0.88em; line-height: 1.5; color: #495057; white-space: pre-wrap; word-wrap: break-word; }
-        .log-entry { margin-bottom: 3px; padding-bottom: 3px; border-bottom: 1px solid #e0e0e0; }
-        .log-entry:last-child { border-bottom: none; }
-        /* Poderia adicionar cores aos logs baseados em [ERRO], [WA], etc. */
+        .panel-logs { display: flex; flex-direction: column; } /* Garante que logs cresçam */
+        #logs { flex-grow: 1; /* Ocupa espaço no painel */ overflow-y: auto; background-color: #fff; border: 1px solid #e9edef; border-radius: 6px; padding: 12px; font-family: 'Fira Code', Consolas, monospace; font-size: 0.88em; line-height: 1.6; color: #3b4a54; white-space: pre-wrap; word-wrap: break-word; }
+        .log-entry { padding-bottom: 4px; }
+        .log-entry:not(:last-child) { border-bottom: 1px solid #f0f2f5; margin-bottom: 4px;}
+
     </style>
 </head>
 <body>
     <div class="app-header">MagnosBot</div>
 
     <div class="main-container">
-        <div class="left-panel">
-            <div class="panel">
+        <!-- Coluna Esquerda -->
+        <div class="left-column">
+            <div class="panel panel-control">
                 <h2>Controle & Status</h2>
                 <button id="startButton">Iniciar Bot</button>
                 <div id="status-area">Status: <span id="status" class="status status-disconnected">Desconectado</span></div>
-                <button id="pauseButton" style="display: none;">Pausar Bot</button> <!-- Inicialmente escondido -->
+                <button id="pauseButton" style="display: none;">Pausar Bot</button>
                 <button id="checkUpdateButton">Verificar Atualizações</button>
-                <!-- Barra de Progresso -->
                 <div id="updateProgressContainer">
-                    <span id="updateProgressLabel">Baixando atualização...</span>
+                    <span id="updateProgressLabel">Verificando...</span>
                     <progress id="updateProgressBar" value="0" max="100"></progress>
                 </div>
             </div>
-             <!-- Painel QR ou Conectado -->
-            <div class="panel qr-panel" id="connection-display-area">
-                <div id="qr-code-container">
+            <div class="panel panel-connection">
+                 <!-- Área de exibição de QR / Conectado -->
+                 <div id="qr-code-container">
                     <img id="qr-code-image" src="" alt="Scan QR Code">
-                    <span id="qr-placeholder">Clique 'Iniciar Bot' para gerar QR Code</span>
-                </div>
-                <div id="connected-info-panel" style="display: none;">
-                    <div class="icon"✔️</div> <!-- Ícone simples -->
-                    <p>WhatsApp Conectado e Bot Ativo!</p>
-                    <small style="color: #777;">Aguardando mensagens...</small>
-                </div>
+                    <span id="qr-placeholder">Clique 'Iniciar Bot' para conectar</span>
+                 </div>
+                 <div id="connected-info-panel">
+                    <div class="icon">✓</div>
+                    <p>WhatsApp Conectado</p>
+                    <small>Monitorando mensagens...</small>
+                 </div>
             </div>
         </div>
 
-        <div class="right-panel">
-            <div class="panel config-panel">
-                 <h2>Configuração de Respostas (Auto-Reply)</h2>
+        <!-- Coluna Direita -->
+        <div class="right-column">
+            <div class="panel panel-config">
+                 <h2>Configuração de Respostas</h2>
                  <p id="configDescription">
-                     <b>Instruções:</b> Use o formato JSON abaixo. A "chave" (entre aspas) é a mensagem <b>exata</b> que você espera receber. O "valor" (entre aspas) é a resposta que o bot enviará.
-                     <br>Ex: <code>{ "bom dia": "Bom dia pra você também!", "!preco": "O valor atual é R$ 50,00." }</code>
+                     <b>Instruções:</b> Use JSON válido. A chave é a mensagem <b>exata</b> recebida. O valor é a resposta enviada.
+                     <br>Ex: <code>{ "bom dia": "Bom dia!", "!info": "Bot V1.0" }</code>
                  </p>
                  <textarea id="configTextArea" placeholder='{
-  "ola": "Olá! Tudo bem?",
-  "!ajuda": "Comandos: !ping, !info"
+  "ola": "Olá! Como vai?",
+  "ajuda": "Comandos disponíveis: !status"
 }'></textarea>
                  <button id="saveConfigButton">Salvar Configuração</button>
             </div>
-            <div class="panel log-panel">
+            <div class="panel panel-logs">
                  <h2>Console de Logs</h2>
                  <div id="logs"></div>
             </div>

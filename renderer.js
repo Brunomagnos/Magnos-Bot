@@ -1,6 +1,6 @@
 // ./renderer.js
 
-// Referências a TODOS os elementos
+// Referências
 const startButton = document.getElementById('startButton');
 const statusElement = document.getElementById('status');
 const logsElement = document.getElementById('logs');
@@ -8,13 +8,10 @@ const checkUpdateButton = document.getElementById('checkUpdateButton');
 const configTextArea = document.getElementById('configTextArea');
 const saveConfigButton = document.getElementById('saveConfigButton');
 const pauseButton = document.getElementById('pauseButton');
-// Painel QR/Conectado
-const connectionDisplayArea = document.getElementById('connection-display-area');
 const qrCodeContainer = document.getElementById('qr-code-container');
 const qrCodeImage = document.getElementById('qr-code-image');
 const qrPlaceholder = document.getElementById('qr-placeholder');
 const connectedInfoPanel = document.getElementById('connected-info-panel');
-// Progresso Update
 const updateProgressContainer = document.getElementById('updateProgressContainer');
 const updateProgressBar = document.getElementById('updateProgressBar');
 const updateProgressLabel = document.getElementById('updateProgressLabel');
@@ -22,166 +19,123 @@ const updateProgressLabel = document.getElementById('updateProgressLabel');
 // Estados
 let isBotStartingOrRunning = false;
 let isBotConnected = false;
-let isBotPaused = false; // Assumir que começa não pausado
+let isBotPaused = false;
 
-// Funções Auxiliares
-function updateStartButtonState(isStarting) {
-    isBotStartingOrRunning = isStarting;
-    startButton.disabled = isStarting;
-    startButton.textContent = isStarting ? 'Iniciando/Conectando...' : 'Iniciar Bot';
+// Funções Auxiliares UI
+function updateStartButtonState(isStarting, isConnected = false) {
+    isBotStartingOrRunning = isStarting || isConnected;
+    startButton.disabled = isBotStartingOrRunning; // Desabilita se iniciando OU conectado
+    startButton.textContent = isStarting ? 'Conectando...' : (isConnected ? 'Conectado' : 'Iniciar Bot');
 }
-function addLog(logMessage) {
-    // Remove timestamp duplicado se já vier formatado do main
-    const cleanedMessage = logMessage.startsWith('[') && logMessage.includes(']') ? logMessage.substring(logMessage.indexOf(']') + 2) : logMessage;
-
-    console.log("Renderer Log:", cleanedMessage);
-    const logEntry = document.createElement('div');
-    logEntry.className = 'log-entry';
-    logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${cleanedMessage}`; // Adiciona timestamp aqui
-    logsElement.appendChild(logEntry);
-    logsElement.scrollTop = logsElement.scrollHeight;
-}
-function showQrPanel() {
-    qrCodeContainer.style.display = 'flex'; // Usa flexbox para centralizar
+function addLog(logMessage) { /* ... (igual anterior) ... */ const cleaned = logMessage.startsWith('[') && logMessage.includes(']') ? logMessage.substring(logMessage.indexOf(']') + 2) : logMessage; console.log("Renderer Log:", cleaned); const e = document.createElement('div'); e.className = 'log-entry'; e.textContent = `[${new Date().toLocaleTimeString()}] ${cleaned}`; logsElement.appendChild(e); logsElement.scrollTop = logsElement.scrollHeight; }
+function showQrPanel(text = 'Gerando QR Code...') {
+    qrCodeContainer.style.display = 'flex';
     qrCodeImage.style.display = 'none';
-    qrPlaceholder.textContent = 'Gerando QR Code...';
-    qrPlaceholder.style.display = 'inline';
+    qrPlaceholder.textContent = text;
+    qrPlaceholder.style.display = 'block';
     connectedInfoPanel.style.display = 'none';
-    connectionDisplayArea.style.borderColor = '#f0ad4e'; // Borda amarela
-    pauseButton.style.display = 'none'; // Esconde botão pausa
+    pauseButton.style.display = 'none';
     isBotConnected = false;
+    updateStartButtonState(true, false); // Mostra 'Conectando...'
 }
 function showConnectedPanel() {
     qrCodeContainer.style.display = 'none';
-    connectedInfoPanel.style.display = 'flex'; // Usa flexbox
-    connectionDisplayArea.style.borderColor = '#2ecc71'; // Borda verde
+    connectedInfoPanel.style.display = 'flex';
     pauseButton.style.display = 'inline-block'; // Mostra botão pausa
     isBotConnected = true;
-    updatePauseButtonText(); // Atualiza texto do botão pausa
+    updateStartButtonState(false, true); // Mostra 'Conectado' e desabilita Iniciar
+    updatePauseButtonText();
 }
 function showDisconnectedState() {
      qrCodeContainer.style.display = 'flex';
      qrCodeImage.style.display = 'none';
-     qrPlaceholder.textContent = 'Desconectado ou Erro. Clique Iniciar.';
-     qrPlaceholder.style.display = 'inline';
+     qrPlaceholder.textContent = 'Desconectado. Clique Iniciar.';
+     qrPlaceholder.style.display = 'block';
      connectedInfoPanel.style.display = 'none';
-     connectionDisplayArea.style.borderColor = '#dee2e6'; // Borda padrão
      pauseButton.style.display = 'none';
      isBotConnected = false;
+     updateStartButtonState(false, false); // Habilita 'Iniciar Bot'
 }
 function updatePauseButtonText() {
-    pauseButton.textContent = isBotPaused ? 'Continuar Bot (Pausado)' : 'Pausar Bot (Ativo)';
-    if (isBotPaused) {
-        pauseButton.classList.add('paused'); // Adiciona classe para estilo laranja
-    } else {
-        pauseButton.classList.remove('paused'); // Remove classe
-    }
+    pauseButton.textContent = isBotPaused ? '▶️ Continuar Bot' : '⏸️ Pausar Bot';
+    if (isBotPaused) pauseButton.classList.add('paused');
+    else pauseButton.classList.remove('paused');
 }
 
-// --- Enviar Comandos para Main ---
+// --- Event Listeners UI ---
 startButton.addEventListener('click', () => {
-    if (isBotStartingOrRunning) return;
-    console.log("Renderer: Start"); updateStartButtonState(true);
-    showQrPanel(); // Mostra área do QR e placeholder inicial
+    if (isBotStartingOrRunning) return; console.log("Renderer: Start");
+    showQrPanel('Inicializando...'); updateStartButtonState(true);
     statusElement.textContent = 'Inicializando...'; statusElement.className = 'status status-initializing';
-    addLog("Solicitando inicialização do bot...");
+    addLog("Solicitando inicialização...");
     window.electronAPI.send('start-bot');
 });
 checkUpdateButton.addEventListener('click', () => {
-    console.log("Renderer: Check Update"); addLog("Solicitando verificação de atualizações...");
+    console.log("Renderer: Check Update"); addLog("Solicitando verificação de att...");
     window.electronAPI.send('check-for-update-request');
-    updateProgressLabel.textContent = 'Verificando...';
-    updateProgressBar.value = 0;
-    updateProgressContainer.style.display = 'block'; // Mostra barra (sem valor ainda)
+    updateProgressLabel.textContent = 'Verificando...'; updateProgressBar.value = 0; updateProgressBar.removeAttribute('value'); updateProgressContainer.style.display = 'block'; // Estado indeterminado
+    checkUpdateButton.disabled = true; // Evita cliques múltiplos na verificação
 });
 saveConfigButton.addEventListener('click', () => {
     const configString = configTextArea.value; console.log("Renderer: Save Config");
     addLog("Tentando salvar configuração...");
-     try {
-        const configObj = JSON.parse(configString); // Valida se é JSON
-        window.electronAPI.send('save-config', configObj); // Envia objeto parsed
+    try {
+        const configObj = JSON.parse(configString || "{}"); // Garante obj válido mesmo se vazio
+        if (typeof configObj !== 'object' || configObj === null) throw new Error("Configuração deve ser um objeto JSON.");
+        window.electronAPI.send('save-config', configObj); // Envia objeto
         saveConfigButton.textContent = 'Salvando...'; saveConfigButton.disabled = true;
-        setTimeout(() => { saveConfigButton.textContent = 'Salvar Configuração'; saveConfigButton.disabled = false; }, 1500);
-    } catch (e) {
-        addLog(`ERRO: Configuração inválida. JSON? Detalhes: ${e.message}`);
-        alert(`Erro na configuração JSON!\n${e.message}`);
-     }
+        setTimeout(() => { saveConfigButton.textContent = 'Salvar Configuração'; saveConfigButton.disabled = false; addLog("Configuração enviada para salvar."); }, 1500);
+    } catch (e) { addLog(`ERRO: JSON inválido: ${e.message}`); alert(`Erro na configuração JSON!\n${e.message}`); }
 });
 pauseButton.addEventListener('click', () => {
-    console.log("Renderer: Toggle Pause");
-    addLog(isBotPaused ? "Solicitando continuar o bot..." : "Solicitando pausar o bot...");
+    console.log("Renderer: Toggle Pause"); addLog(isBotPaused ? "Solicitando continuar..." : "Solicitando pausar...");
     window.electronAPI.send('toggle-pause-bot');
 });
 
-// --- Receber Atualizações do Main ---
+// --- Receber Eventos do Main ---
 window.electronAPI.on('log-message', addLog);
 
 window.electronAPI.on('update-status', (message) => {
     console.log("Renderer: Status -", message); statusElement.textContent = message;
-    const msgLower = message.toLowerCase();
-    let statusClass = 'status-default'; // Começa com padrão
-    if (msgLower.includes('conectado')) { statusClass = 'status-connected'; updateStartButtonState(false); showConnectedPanel();}
-    else if (msgLower.includes('autenticado')) statusClass = 'status-authenticated';
-    else if (msgLower.includes('inicializando') || msgLower.includes('carregando whatsapp')) { statusClass = 'status-initializing'; updateStartButtonState(true);}
-    else if (msgLower.includes('gerando qr') || msgLower.includes('qr code pronto')) statusClass = 'status-generating-qr';
-    else if (msgLower.includes('escanear') || msgLower.includes('qr code pronto')) { statusClass = 'status-scanning'; showQrPanel(); updateStartButtonState(true); }
-    else if (msgLower.includes('desconectado') || msgLower.includes('erro') || msgLower.includes('falha') || msgLower.includes('permission')) { statusClass = 'status-error'; updateStartButtonState(false); showDisconnectedState(); }
-    else if (msgLower.includes('pausado')) { statusClass = 'status-paused'; } // Status visual para pausado
-    else if (msgLower.includes('versão mais recente') || msgLower.includes('aplicativo atualizado')) { statusClass = isBotConnected ? 'status-connected' : 'status-default'; updateProgressContainer.style.display = 'none'; } // Esconde barra se up-to-date
-    else if (msgLower.includes('verificando atualiza') || msgLower.includes('atualização encontrada')) statusClass = 'status-scanning'; // Azul para att
-    else if (msgLower.includes('baixando atualiza')) statusClass = 'status-loading';
+    const msgL = message.toLowerCase(); let statusC = 'status-default'; let reenableCheck = false;
+    if (msgL.includes('conectado')) { statusC = 'status-connected'; showConnectedPanel(); }
+    else if (msgL.includes('autenticado')) statusC = 'status-authenticated';
+    else if (msgL.includes('inicializando')) { statusC = 'status-initializing'; updateStartButtonState(true); showQrPanel('Inicializando...'); }
+    else if (msgL.includes('carregando wa')) { statusC = 'status-initializing'; updateStartButtonState(true); showQrPanel(message); } // Mostra progresso
+    else if (msgL.includes('gerando qr')) statusC = 'status-generating-qr';
+    else if (msgL.includes('escanear') || msgL.includes('qr code pronto')) { statusC = 'status-scanning'; showQrPanel('Escaneie o QR Code'); updateStartButtonState(true); }
+    else if (msgL.includes('desconectado') || msgL.includes('erro') || msgL.includes('falha') || msgL.includes('permission') ) { statusC = 'status-error'; updateStartButtonState(false); showDisconnectedState(); reenableCheck = true; }
+    else if (msgL.includes('pausado')) { statusC = 'status-paused'; }
+    else if (msgL.includes('versão mais recente')) { statusC = isBotConnected ? 'status-connected' : 'status-default'; updateProgressContainer.style.display = 'none'; reenableCheck = true;}
+    else if (msgL.includes('aplicativo atualizado')) { statusC = 'status-connected'; updateProgressContainer.style.display = 'none'; reenableCheck = true;} // Verde mesmo, indica sucesso
+    else if (msgL.includes('verificando att') || msgL.includes('att encontrada')) statusC = 'status-scanning';
+    else if (msgL.includes('baixando att')) statusC = 'status-loading';
 
-    statusElement.className = 'status ' + statusClass;
-    // Se estado for de erro, garante que botão esteja habilitado
-    if (statusClass === 'status-error') updateStartButtonState(false);
+    statusElement.className = 'status ' + statusC;
+    if (statusC === 'status-error') updateStartButtonState(false);
+    if (reenableCheck) checkUpdateButton.disabled = false; // Reabilita botão check update
 });
-
 window.electronAPI.on('display-qr', (imageDataUrl) => {
-    console.log("Renderer: Display QR.");
-    showQrPanel(); // Garante que o painel QR está visível
-    qrCodeImage.src = imageDataUrl; qrCodeImage.style.display = 'block';
-    qrPlaceholder.style.display = 'none';
-    addLog("QR Code pronto. Escaneie com WhatsApp.");
+    console.log("Renderer: Display QR."); showQrPanel('Escaneie com WhatsApp');
+    qrCodeImage.src = imageDataUrl; qrCodeImage.style.display = 'block'; qrPlaceholder.style.display = 'none';
+    addLog("QR Code pronto.");
 });
-
-window.electronAPI.on('clear-qr', () => {
-    console.log("Renderer: Clear QR."); showConnectedPanel();
-    addLog("Conectado ao WhatsApp.");
-});
-
-window.electronAPI.on('config-loaded', (configData) => {
-    console.log("Renderer: Config carregada.");
-    try {
-        configTextArea.value = JSON.stringify(configData || {}, null, 2);
-        addLog("Configuração de respostas preenchida.");
-    } catch (e) { addLog("ERRO: Exibir config: " + e.message); configTextArea.value = "Erro ao carregar config."; }
-});
-
+window.electronAPI.on('clear-qr', () => { console.log("Renderer: Clear QR."); showConnectedPanel(); addLog("Conectado."); });
+window.electronAPI.on('config-loaded', (c) => { console.log("Renderer: Config recebida."); try { configTextArea.value = JSON.stringify(c || {}, null, 2); addLog("Configuração preenchida."); } catch (e) { addLog("ERRO Exibir config: "+e.message); configTextArea.value = "Erro ao carregar."; } });
 window.electronAPI.on('update-download-progress', (percent) => {
-    // console.log("Renderer: Update Progress -", percent); // Muito verbose, só no main
-    updateProgressContainer.style.display = 'block';
-    updateProgressBar.value = percent;
-    updateProgressLabel.textContent = `Baixando atualização... ${percent.toFixed(0)}%`;
-});
-
-window.electronAPI.on('pause-state-changed', (paused) => {
-    console.log("Renderer: Pause state changed -", paused);
-    isBotPaused = paused; // Atualiza estado local
-    updatePauseButtonText(); // Atualiza texto/cor do botão
-    addLog(paused ? "Bot pausado." : "Bot continuado.");
-    // Atualiza status principal também
-    if(isBotConnected) {
-         statusElement.textContent = paused ? 'Pausado' : 'Conectado';
-        statusElement.className = 'status ' + (paused ? 'status-paused' : 'status-connected');
+    if (percent < 0) { // Sinal para esconder
+        updateProgressContainer.style.display = 'none';
+        checkUpdateButton.disabled = false;
+    } else {
+        updateProgressContainer.style.display = 'block';
+        updateProgressBar.value = percent;
+        updateProgressBar.removeAttribute('value'); // Fica indeterminado até ter valor
+        if(percent > 0) updateProgressBar.value = percent; // Define valor se maior que 0
+        updateProgressLabel.textContent = `Baixando atualização... ${percent.toFixed(0)}%`;
     }
 });
+window.electronAPI.on('pause-state-changed', (p) => { console.log("R: Pause state:", p); isBotPaused=p; updatePauseButtonText(); addLog(p?"Bot pausado.":"Bot continuado."); if(isBotConnected){statusElement.textContent = p?'Pausado':'Conectado'; statusElement.className = 'status '+(p?'status-paused':'status-connected');} });
 
-
-// --- Inicialização ---
-window.addEventListener('DOMContentLoaded', () => {
-     addLog("Interface carregada.");
-     addLog("Solicitando configuração...");
-     window.electronAPI.send('load-config-request');
-     showDisconnectedState(); // Estado inicial visual
-});
+// Inicialização UI
+window.addEventListener('DOMContentLoaded', () => { addLog("Interface pronta."); addLog("Carregando config..."); window.electronAPI.send('load-config-request'); showDisconnectedState(); });
 console.log("Renderer script carregado.");
