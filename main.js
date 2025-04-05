@@ -19,7 +19,7 @@ let mainWindow;
 let client;
 const configPath = path.join(app.getPath('userData'), 'bot-config.json');
 let botConfig = {};
-let isBotPaused = false;
+let isBotPaused = false; // Estado de pausa
 let clientReady = false; // Flag para saber se o 'ready' foi emitido
 
 // --- Funções Auxiliares ---
@@ -29,18 +29,18 @@ function sendPauseState() { if (mainWindow && !mainWindow.isDestroyed()){ mainWi
 function hideDownloadProgress() { if (mainWindow && !mainWindow.isDestroyed()) { mainWindow.webContents.send('update-download-progress', -1); } }
 
 // --- Funções Config ---
-async function loadConfig() { sendLog('info', '[Config] Carregando...'); try { const data = await fs.readFile(configPath, 'utf8'); botConfig = JSON.parse(data); sendLog('info', '[Config] Carregado com sucesso.'); } catch (error) { if (error.code === 'ENOENT') { sendLog('warn', '[Config] Não encontrado, criando vazio.'); botConfig = {}; await saveConfig({}).catch(e => sendLog('error', "[Config ERR] Criar inicial: "+ e.message)); } else { sendLog('error', `[Config ERR] Ler/Parse: ${error.message}`); botConfig = {}; dialog.showErrorBox('Erro Configuração', `Falha carregar ${configPath}.\nJSON? Erro: ${error.message}`); } } if (mainWindow && !mainWindow.isDestroyed()) { mainWindow.webContents.send('config-loaded', botConfig); } }
-async function saveConfig(newConfigObject) { sendLog('info', '[Config] Salvando...'); try { if(typeof newConfigObject !== 'object' || newConfigObject === null) throw new Error("Tentativa de salvar config não-objeto"); await fs.writeFile(configPath, JSON.stringify(newConfigObject, null, 2), 'utf8'); botConfig = newConfigObject; sendLog('info', '[Config] Salvo com sucesso.'); updateStatus('Configuração salva.'); } catch (error) { sendLog('error', `[Config ERR] Salvar: ${error.message}`); updateStatus('Erro salvar config.'); dialog.showErrorBox('Erro ao Salvar', `Falha salvar.\nErro: ${error.message}`); } }
+async function loadConfig() { sendLog('info', '[Config] Carregando...'); try { const data = await fs.readFile(configPath, 'utf8'); botConfig = JSON.parse(data); sendLog('info', '[Config] Carregado com sucesso.'); } catch (error) { if (error.code === 'ENOENT') { sendLog('warn', '[Config] Não encontrado, criando vazio.'); botConfig = {}; await saveConfig({}).catch(e => sendLog('error', "[Config ERR] Criar inicial: "+ e.message)); } else { sendLog('error', `[Config ERR] Ler/Parse: ${error.message}`); botConfig = {}; dialog.showErrorBox('Erro Configuração', `Falha carregar ${configPath}.\nJSON válido?\nErro: ${error.message}`); } } if (mainWindow && !mainWindow.isDestroyed()) { mainWindow.webContents.send('config-loaded', botConfig); } }
+async function saveConfig(newConfigObject) { sendLog('info', '[Config] Salvando...'); try { if(typeof newConfigObject !== 'object' || newConfigObject === null) throw new Error("Tentativa de salvar config não-objeto"); await fs.writeFile(configPath, JSON.stringify(newConfigObject, null, 2), 'utf8'); botConfig = newConfigObject; sendLog('info', '[Config] Salvo com sucesso.'); updateStatus('Configuração salva.'); } catch (error) { sendLog('error', `[Config ERR] Salvar: ${error.message}`); updateStatus('Erro salvar config.'); dialog.showErrorBox('Erro ao Salvar', `Falha salvar config.\nErro: ${error.message}`); } }
 
 // --- Criação Janela ---
 function createWindow() { sendLog('info', '[SYS] Criando janela...'); mainWindow = new BrowserWindow({ width: 1150, height: 800, minWidth: 900, minHeight: 650, webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false } }); mainWindow.loadFile('index.html'); /*mainWindow.webContents.openDevTools();*/ mainWindow.on('closed', () => { mainWindow = null; }); mainWindow.webContents.on('did-finish-load', () => { sendLog('info', '[SYS] UI Carregada.'); loadConfig().then(() => { setTimeout(() => { autoUpdater.checkForUpdatesAndNotify().catch(err => { sendLog('error', `[Updater ERR] Check inicial: ${err.message}`); /* updateStatus('Falha check att.'); */ }); }, 3000); }); }); }
 
 // --- Lógica WhatsApp ---
-async function destroyWhatsAppClient(reason = "Solicitado") { if (client) { sendLog('warn', `[WA] Destruindo cliente (${reason})...`); client.removeAllListeners(); // Remove listeners para evitar memory leaks try { await client.destroy(); sendLog('info','[WA] Cliente destruído.'); } catch (err) { sendLog('error','[WA ERR] Destruir: ' + err.message); } finally { client = null; clientReady = false; isBotPaused = false; updateStatus("Desconectado"); sendPauseState(); } } else { updateStatus("Desconectado"); } }
+async function destroyWhatsAppClient(reason = "Solicitado") { if (client) { sendLog('warn', `[WA] Destruindo cliente (${reason})...`); client.removeAllListeners(); try { await client.destroy(); sendLog('info','[WA] Cliente destruído.'); } catch (err) { sendLog('error','[WA ERR] Destruir: ' + err.message); } finally { client = null; clientReady = false; isBotPaused = false; updateStatus("Desconectado"); sendPauseState(); } } else { /* Ja estava desconectado */ if (!mainWindow || mainWindow.isDestroyed()) updateStatus("Desconectado"); } } // Garante status "Desconectado" mesmo se client ja for null
 async function initializeWhatsApp() { await destroyWhatsAppClient("Reiniciando"); initializeWhatsAppInternal(); }
 function initializeWhatsAppInternal() {
     sendLog('info','[WA] Inicializando...'); updateStatus('Inicializando conexão...'); clientReady = false; isBotPaused = false; sendPauseState();
-    client = new Client({ authStrategy: new LocalAuth({ dataPath: path.join(app.getPath('userData'), 'WhatsAppSession') }), puppeteer: { headless: true, args: ['--no-sandbox','--disable-setuid-sandbox','--disable-dev-shm-usage','--disable-gpu','--disable-extensions','--no-first-run','--no-zygote' ] }, /* LARGURA MENOR?? */ userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.81 Safari/537.36' }); // User agent pode ajudar c/ bugs
+    client = new Client({ authStrategy: new LocalAuth({ dataPath: path.join(app.getPath('userData'), 'WhatsAppSession') }), puppeteer: { headless: true, args: ['--no-sandbox','--disable-setuid-sandbox','--disable-dev-shm-usage','--disable-gpu','--disable-extensions','--no-first-run','--no-zygote' ], }, userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.81 Safari/537.36' });
 
     client.on('qr', (qr) => { sendLog('info', '[WA] QR Recebido.'); updateStatus('Escaneie o QR Code'); qrcode.toDataURL(qr, (err, url) => { if (err) { sendLog('error', '[WA ERR] QR Conv: '+err.message); updateStatus('Erro QR'); return; } if (mainWindow && !mainWindow.isDestroyed()) { mainWindow.webContents.send('display-qr', url); } }); });
     client.on('ready', () => { sendLog('info', '[WA] Pronto!'); updateStatus('Conectado'); clientReady = true; if (mainWindow && !mainWindow.isDestroyed()) { mainWindow.webContents.send('clear-qr'); } initializeMessageListener(); });
@@ -48,36 +48,27 @@ function initializeWhatsAppInternal() {
     client.on('auth_failure', (msg) => { sendLog('error', `[WA ERR] Auth Falha: ${msg}`); updateStatus('Falha Autenticação'); destroyWhatsAppClient('Auth Failure'); });
     client.on('disconnected', (reason) => { sendLog('warn', `[WA] Desconectado: ${reason}`); destroyWhatsAppClient(reason); });
     client.on('loading_screen', (percent, msg) => { updateStatus(`Carregando WA: ${percent}%`); });
-    client.on('error', (err) => { sendLog('error', `[WA Client ERR]: ${err.message}`); updateStatus('Erro no Cliente WA'); /*destroyWhatsAppClient('Client Error');*/ }); // Não destruir aqui sempre
+    client.on('error', (err) => { sendLog('error', `[WA Client ERR]: ${err.message}`); updateStatus('Erro no Cliente WA'); });
 
     sendLog('info', '[WA] Conectando...');
-    client.initialize().catch(err => { const msg = err.message || String(err); sendLog('error', `[WA FATAL] Init: ${msg}`); updateStatus('Erro Inicialização'); if (!mainWindow || mainWindow.isDestroyed()) { app.quit(); return;} if(msg.includes('browser') || msg.includes('ENOENT') || msg.includes('Target closed')) { dialog.showErrorBox('Erro Puppeteer/Browser', `Falha ao iniciar navegador:\n${msg}\n\nTente fechar outros bots/browsers ou verifique antivirus.`); } else { dialog.showErrorBox('Erro Inicialização WA', `Erro: ${msg}`); } destroyWhatsAppClient('Init Failed'); });
+    client.initialize().catch(err => { const msg = err.message || String(err); sendLog('error', `[WA FATAL] Init: ${msg}`); let userMsg = `Erro Inicialização WA: ${msg}`; if(msg.includes('browser') || msg.includes('ENOENT') || msg.includes('Target closed')) { userMsg = `Falha Puppeteer/Browser:\n${msg}\n\nTente fechar outros processos ou verifique antivirus.`; } updateStatus('Erro Inicialização'); if (mainWindow && !mainWindow.isDestroyed()){ dialog.showErrorBox('Erro Inicialização', userMsg); } destroyWhatsAppClient('Init Failed'); });
 }
 
 // --- Listener Mensagens ---
 function initializeMessageListener() {
     if (!client || !clientReady) { sendLog('warn', '[WA AVISO] Listener s/ cliente pronto.'); return; }
-    client.removeAllListeners('message');
+    client.removeAllListeners('message'); // Evita duplicados em reinicialização
     client.on('message', async msg => {
-        if (msg.fromMe || isBotPaused || !clientReady) return;
-
-        const sender = msg.from;
-        const body = msg.body;
-        sendLog('debug', `[WA Msg In] De: ${sender} | Body: ${body.substring(0, 50)}...`); // Log como debug
-
+        if (msg.fromMe || isBotPaused || !clientReady) return; // Ignora se pausado, self, ou não pronto
+        const sender = msg.from; const body = msg.body;
+        sendLog('debug', `[WA Msg In] De: ${sender} | Body: ${body.substring(0, 50)}...`);
         try {
-            // Lógica de Match Exato Otimizada
             const replyText = botConfig ? botConfig[body] : undefined;
             if (replyText && typeof replyText === 'string') {
-                 await client.sendMessage(sender, replyText);
+                 await client.sendMessage(sender, replyText); // Usar sendMessage é mais geral
                  sendLog('info', `[Bot Resp (Exata)] Para ${sender}: "${replyText}"`);
                  return;
              }
-
-            // Adicione mais lógicas aqui (ex: comandos com !, palavras chave)
-             // if (body.startsWith("!comando")) { ... }
-             // if (body.toLowerCase().includes("palavra")) { ... }
-
         } catch (error) { sendLog('error', `[Bot ERR] Responder ${sender}: ${error.message}`); }
     });
     sendLog('info', '[WA] Listener mensagens pronto.');
@@ -86,8 +77,8 @@ function initializeMessageListener() {
 // --- Handlers Updater ---
 autoUpdater.on('checking-for-update', () => { updateStatus('Verificando att...'); });
 autoUpdater.on('update-available', (i) => { updateStatus(`Atualização v${i.version} encontrada`); sendLog('info', `[Updater] Disponível: v${i.version}`) });
-autoUpdater.on('update-not-available', (i) => { updateStatus('Versão mais recente.'); sendLog('info', '[Updater] Não disponível.'); hideDownloadProgress(); if (mainWindow) mainWindow.webContents.send('log-message',''); }); // Esconde progresso
-autoUpdater.on('error', (err) => { updateStatus('Erro atualizador.'); sendLog('error', `[Updater ERR] ${err.message}`); hideDownloadProgress(); if (mainWindow) mainWindow.webContents.send('log-message', ''); });
+autoUpdater.on('update-not-available', (i) => { updateStatus('Versão mais recente.'); sendLog('info', '[Updater] Não disponível.'); hideDownloadProgress(); });
+autoUpdater.on('error', (err) => { updateStatus('Erro atualizador.'); sendLog('error', `[Updater ERR] ${err.message}`); hideDownloadProgress(); });
 autoUpdater.on('download-progress', (p) => { updateStatus(`Baixando att: ${p.percent.toFixed(0)}%`); if(mainWindow && !mainWindow.isDestroyed()){mainWindow.webContents.send('update-download-progress', p.percent);} });
 autoUpdater.on('update-downloaded', (i) => { updateStatus('Atualização pronta!'); sendLog('info', `[Updater] Baixada: v${i.version}`); hideDownloadProgress(); ipcMain.emit('show-update-restart-dialog'); });
 
@@ -97,7 +88,7 @@ ipcMain.on('check-for-update-request', () => { sendLog('info', '[IPC] Req check 
 ipcMain.on('load-config-request', (event) => { sendLog('debug', '[IPC] Req load config.'); event.reply('config-loaded', botConfig); });
 ipcMain.on('save-config', (event, configObject) => { sendLog('info', '[IPC] Req save config.'); saveConfig(configObject); });
 ipcMain.on('toggle-pause-bot', () => { isBotPaused = !isBotPaused; const statusMsg = isBotPaused ? "Pausado" : (clientReady ? "Conectado" : "Pausado (Desconectado?)"); sendLog('info', `[SYS] Pause: ${isBotPaused}`); updateStatus(statusMsg); sendPauseState(); });
-ipcMain.on('show-update-restart-dialog', async () => { /* ... igual ... */ sendLog('info','[Updater] Req reinício.'); if (!mainWindow || mainWindow.isDestroyed()) return; try { const { response } = await dialog.showMessageBox(mainWindow, { type:'info',title:'Att Pronta', message:'Reiniciar e instalar?', buttons: ['Reiniciar', 'Depois'], defaultId: 0, cancelId: 1 }); if (response===0) { sendLog('info',"[Updater] Aceito."); await destroyWhatsAppClient("Atualizando"); autoUpdater.quitAndInstall(); } else { sendLog('info',"[Updater] Adiado."); updateStatus('Att ao sair.'); } } catch(e) { sendLog('error',`[Updater ERR] Diálogo: ${e.message}`); } });
+ipcMain.on('show-update-restart-dialog', async () => { sendLog('info','[Updater] Req reinício.'); if (!mainWindow || mainWindow.isDestroyed()) return; try { const { response } = await dialog.showMessageBox(mainWindow, { type:'info',title:'Att Pronta', message:'Reiniciar e instalar?', buttons: ['Reiniciar', 'Depois'], defaultId: 0, cancelId: 1 }); if (response===0) { sendLog('info',"[Updater] Aceito."); await destroyWhatsAppClient("Atualizando"); autoUpdater.quitAndInstall(); } else { sendLog('info',"[Updater] Adiado."); updateStatus('Att instalará ao sair.'); } } catch(e) { sendLog('error',`[Updater ERR] Diálogo: ${e.message}`); } });
 
 // --- Ciclo de Vida App ---
 app.whenReady().then(() => { sendLog('info', '====== [SYS] Iniciado ======'); loadConfig().finally(() => { createWindow(); app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); }); }); });
@@ -105,7 +96,8 @@ app.on('window-all-closed', async () => { await destroyWhatsAppClient("Fechando 
 app.on('before-quit', async () => { sendLog('info', '[SYS] Saindo...'); await destroyWhatsAppClient("Saindo do App"); });
 
 // --- Erros Globais ---
-process.on('uncaughtException', (e, o) => { log.error('*** UNC EXCEPTION ***', e, o); sendLog('error',`[ERR CRIT] ${e.message}`); if(mainWindow && !mainWindow.isDestroyed()) dialog.showErrorBox('Erro Crítico',`Erro:${e.message}`);});
+process.on('uncaughtException', (e, o) => { log.error('*** UNC EXCEPTION ***', e, o); sendLog('error',`[ERR CRIT] ${e.message}`); if(mainWindow && !mainWindow.isDestroyed()) dialog.showErrorBox('Erro Crítico',`Erro:\n${e.message}`);});
 process.on('unhandledRejection', (r, p) => { log.error('*** UNH REJECTION ***', r); sendLog('error',`[ERR ASYNC] ${r}`);});
 
+// Linha final
 sendLog('info', '[SYS] main.js processado.');
