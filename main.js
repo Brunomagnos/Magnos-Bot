@@ -212,7 +212,7 @@ if (!gotTheLock) {
         client = new Client({
             authStrategy: new LocalAuth({ dataPath: sessionPath }),
             puppeteer: {
-                headless: false, // 'new' ou true nas versões mais recentes
+                headless: true, // 'new' ou true nas versões mais recentes
                 args: [
                     '--no-sandbox',
                     '--disable-setuid-sandbox',
