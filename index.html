@@ -2,184 +2,129 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;">
-    <title>MagnosBot - WhatsApp Automation</title>
-    <style>
-        /* === Reset & Base === */
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-            background-color: #f0f2f5; /* Fundo estilo WhatsApp Web */
-            color: #4a4a4a; /* Texto principal mais escuro */
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            overflow: hidden;
-            font-size: 14px;
-        }
-        /* === Header === */
-        .app-header {
-            background: #005e54; /* Verde mais escuro, cor sólida */
-            color: #ffffff;
-            padding: 14px 25px;
-            font-size: 1.25em;
-            font-weight: 600;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            z-index: 10;
-        }
-        /* === Main Layout === */
-        .main-container {
-            display: flex;
-            flex-grow: 1; /* Ocupa espaço vertical */
-            padding: 20px;
-            gap: 20px;
-            overflow: hidden; /* Essencial para conter painéis */
-        }
-        /* --- Colunas --- */
-        .left-column {
-            flex: 0 0 350px; /* Largura fixa */
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-        .right-column {
-            flex: 1; /* Ocupa espaço restante */
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            min-width: 0; /* Impede que o conteúdo force alargamento */
-        }
-        /* === Painéis === */
-        .panel {
-            background-color: #ffffff;
-            border-radius: 8px;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.07);
-            border: 1px solid #e9edef;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-             /* Overflow gerenciado pelo painel específico */
-        }
-        /* --- Painéis específicos --- */
-        .panel-control { flex-shrink: 0; } /* Não encolhe */
-        .panel-connection { flex-grow: 1; align-items: center; justify-content: center; text-align: center; overflow: hidden; }
-        .panel-config { flex-basis: 45%; flex-shrink: 0; overflow: hidden; } /* Não deixa logs espremerem muito */
-        .panel-logs { flex-grow: 1; flex-basis: 55%; overflow: hidden; min-height: 150px; /* Altura mínima */ }
-
-        /* === Títulos === */
-        h2 {
-            font-size: 1.1em; /* Ligeiramente menor */
-            font-weight: 600;
-            color: #111b21; /* Cinza escuro Wpp */
-            margin-top: 0;
-            margin-bottom: 15px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid #e9edef;
-        }
-        /* === Botões === */
-        button { padding: 9px 15px; font-size: 0.92em; font-weight: 500; cursor: pointer; color: white; border: none; border-radius: 5px; transition: background-color 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease; text-align: center; box-shadow: 0 1px 1px rgba(0,0,0,0.08); margin-bottom: 6px; background-color: #00a884; /* Verde Principal */ }
-        button:hover:not(:disabled) { background-color: #008069; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        button:active:not(:disabled) { transform: scale(0.98); background-color: #00705c; }
-        button:disabled { background-color: #d6dce0; color: #85939f; cursor: not-allowed; box-shadow: none; }
-        #startButton { background-color: #00a884; /* Verde Principal */ font-size: 1em; padding: 10px 20px;}
-        #pauseButton.paused { background-color: #ffbf00; /* Amarelo alerta */ color: #4d3800; }
-        #pauseButton.paused:hover:not(:disabled) { background-color: #fca500; }
-        #checkUpdateButton { background-color: #5a7d90; /* Cinza azulado */ }
-        #checkUpdateButton:hover:not(:disabled) { background-color: #486373; }
-        #saveConfigButton { background-color: #00a884; } /* Verde para salvar */
-
-        /* === Status === */
-        #status-area { font-size: 0.95em; text-align: center; margin-bottom: 15px;}
-        .status { font-weight: 600; padding: 5px 12px; border-radius: 16px; display: inline-block; margin-top: 5px; font-size: 0.88em; border: 1px solid transparent; }
-        .status-disconnected { background-color: #ffebee; color: #c62828; border-color: #f7cac9;} /* Vermelho claro */
-        .status-initializing, .status-generating-qr, .status-loading { background-color: #fff9c4; color: #8f5c00; border-color: #fce38a;} /* Amarelo claro */
-        .status-scanning { background-color: #e3f2fd; color: #1565c0; border-color: #b4dcf9;} /* Azul claro */
-        .status-authenticated, .status-connected { background-color: #e8f5e9; color: #2e7d32; border-color: #c8e6c9;} /* Verde claro */
-        .status-error { background-color: #ffcdd2; color: #b71c1c; border-color: #f09da4;} /* Rosa erro */
-        .status-paused { background-color: #fff3e0; color: #ef6c00; border-color: #ffcc80;} /* Laranja claro */
-        .status-default { background-color: #eceff1; color: #546e7a; border-color: #cfd8dc; } /* Cinza claro */
-
-        /* === Conexão Area (QR/Conectado) === */
-        #qr-code-container { /* Usado para ambos, estilo vem do JS */ display: flex; flex-grow: 1; width: 100%; align-items: center; justify-content: center; flex-direction: column; padding: 15px; background-color: #fff; border-radius: 6px; border: 1px dashed #d6dce0; }
-        #qr-code-image { max-width: 90%; max-height: 250px; height: auto; display: none; border: none; background-color: white; padding: 5px; box-shadow: 0 1px 5px rgba(0,0,0,0.1); margin-bottom: 10px;}
-        #qr-placeholder { color: #667781; font-size: 0.95em; }
-        #connected-info-panel { /* Começa escondido */ display: none; flex-grow: 1; width: 100%; align-items: center; justify-content: center; flex-direction: column; background-color: #e8f5e9; border-radius: 6px; padding: 20px; border: 1px solid #a5d6a7;}
-        #connected-info-panel .icon { font-size: 3em; color: #4caf50; margin-bottom: 10px; }
-        #connected-info-panel p { font-size: 1.05em; color: #388e3c; font-weight: 500; }
-        #connected-info-panel small { font-size: 0.9em; color: #66bb6a; margin-top: 5px;}
-
-        /* === Configuração === */
-        #configDescription { font-size: 0.9em; color: #667781; margin-bottom: 12px; line-height: 1.5; background-color: #f0f2f5; padding: 10px; border-radius: 4px; }
-        #configTextArea { display: block; flex-grow: 1; width: 100%; font-family: Consolas, 'Courier New', monospace; font-size: 0.9em; border: 1px solid #d6dce0; border-radius: 6px; padding: 12px; margin-bottom: 12px; resize: vertical; min-height: 150px; background-color: #fff; color: #111b21;}
-        #saveConfigButton { width: 100%; } /* Botão largura total */
-
-        /* === Barra de Progresso === */
-        #updateProgressContainer { margin-top: 10px; padding-top: 10px; border-top: 1px solid #e9edef; display: none; }
-        #updateProgressLabel { font-size: 0.8em; color: #667781; margin-bottom: 4px; display: block; text-align: center; }
-        #updateProgressBar { width: 100%; height: 6px; -webkit-appearance: none; appearance: none; border: none; border-radius: 3px; overflow: hidden; background-color: #e9edef; }
-        #updateProgressBar::-webkit-progress-bar { background-color: #e9edef; border-radius: 3px; }
-        #updateProgressBar::-webkit-progress-value { background-color: #00a884; transition: width 0.1s linear; }
-        #updateProgressBar::-moz-progress-bar { background-color: #00a884; border-radius: 3px; }
-
-        /* === Logs === */
-        .panel-logs { display: flex; flex-direction: column; } /* Garante que logs cresçam */
-        #logs { flex-grow: 1; /* Ocupa espaço no painel */ overflow-y: auto; background-color: #fff; border: 1px solid #e9edef; border-radius: 6px; padding: 12px; font-family: 'Fira Code', Consolas, monospace; font-size: 0.88em; line-height: 1.6; color: #3b4a54; white-space: pre-wrap; word-wrap: break-word; }
-        .log-entry { padding-bottom: 4px; }
-        .log-entry:not(:last-child) { border-bottom: 1px solid #f0f2f5; margin-bottom: 4px;}
-
-    </style>
+    <!-- Regra CSP mais segura, permitindo apenas recursos locais -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self';">
+    <title>MagnosBot - Assistente WhatsApp</title>
+    <!-- Link para o arquivo CSS externo -->
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="app-header">MagnosBot</div>
+    <header class="app-header">
+        <h1>MagnosBot ✨</h1>
+        <!-- Adicionado um ID para possível controle futuro (ex: info da versão) -->
+        <div id="app-version-info">v1.1.0</div>
+    </header>
 
-    <div class="main-container">
-        <!-- Coluna Esquerda -->
-        <div class="left-column">
-            <div class="panel panel-control">
-                <h2>Controle & Status</h2>
-                <button id="startButton">Iniciar Bot</button>
-                <div id="status-area">Status: <span id="status" class="status status-disconnected">Desconectado</span></div>
-                <button id="pauseButton" style="display: none;">Pausar Bot</button>
-                <button id="checkUpdateButton">Verificar Atualizações</button>
-                <div id="updateProgressContainer">
-                    <span id="updateProgressLabel">Verificando...</span>
+    <main class="main-container">
+        <!-- Coluna Esquerda: Controle e Conexão -->
+        <aside class="left-column">
+            <section class="panel panel-control">
+                <h2>Controle e Status</h2>
+                <div class="button-group">
+                    <!-- Botão Start/Stop unificado -->
+                    <button id="startButton" class="btn-start">🚀 Iniciar Bot</button>
+                    <button id="pauseButton" class="btn-pause" style="display: none;" title="Pausar/Continuar o recebimento de novas mensagens">⏸️ Pausar</button>
+                </div>
+                <div id="status-area">
+                    Status: <span id="status" class="status status-disconnected">Desconectado</span>
+                </div>
+                 <!-- Botões de Ações Secundárias -->
+                 <div class="secondary-actions">
+                    <button id="checkUpdateButton" class="btn-secondary" title="Verificar se há novas versões do bot disponíveis">🔄 Verificar Atualizações</button>
+                    <button id="clearSessionButton" class="btn-danger btn-small" title="Limpa a sessão salva. Exigirá novo scan QR. Use se o bot não conectar.">🧹 Limpar Sessão</button>
+                 </div>
+                <div id="updateProgressContainer" style="display: none;">
+                    <span id="updateProgressLabel"></span>
                     <progress id="updateProgressBar" value="0" max="100"></progress>
                 </div>
-            </div>
-            <div class="panel panel-connection">
-                 <!-- Área de exibição de QR / Conectado -->
-                 <div id="qr-code-container">
-                    <img id="qr-code-image" src="" alt="Scan QR Code">
-                    <span id="qr-placeholder">Clique 'Iniciar Bot' para conectar</span>
+            </section>
+
+            <section class="panel panel-connection">
+                 <h2>Conexão WhatsApp</h2>
+                 <div id="qr-code-container" class="connection-status-display">
+                    <img id="qr-code-image" src="" alt="QR Code WhatsApp">
+                    <span id="qr-placeholder">Aguardando iniciar...</span>
                  </div>
-                 <div id="connected-info-panel">
-                    <div class="icon">✓</div>
-                    <p>WhatsApp Conectado</p>
+                 <div id="connected-info-panel" class="connection-status-display" style="display: none;">
+                    <div class="icon success-icon">✔</div>
+                    <p>Conectado!</p>
                     <small>Monitorando mensagens...</small>
                  </div>
-            </div>
-        </div>
+                  <div id="error-info-panel" class="connection-status-display" style="display: none;">
+                    <div class="icon error-icon">❌</div>
+                    <p>Erro / Desconectado</p>
+                    <small id="error-details">Verifique os logs.</small>
+                 </div>
+            </section>
+        </aside>
 
-        <!-- Coluna Direita -->
-        <div class="right-column">
-            <div class="panel panel-config">
-                 <h2>Configuração de Respostas</h2>
-                 <p id="configDescription">
-                     <b>Instruções:</b> Use JSON válido. A chave é a mensagem <b>exata</b> recebida. O valor é a resposta enviada.
-                     <br>Ex: <code>{ "bom dia": "Bom dia!", "!info": "Bot V1.0" }</code>
-                 </p>
-                 <textarea id="configTextArea" placeholder='{
-  "ola": "Olá! Como vai?",
-  "ajuda": "Comandos disponíveis: !status"
-}'></textarea>
-                 <button id="saveConfigButton">Salvar Configuração</button>
-            </div>
-            <div class="panel panel-logs">
+        <!-- Coluna Direita: Regras e Logs -->
+        <section class="right-column">
+            <section class="panel panel-rules">
+                 <h2>Gerenciador de Regras</h2>
+                 <div class="rules-list-container scrollable">
+                     <ul class="rules-list" id="rulesList">
+                        <!-- Regras serão renderizadas aqui pelo JS -->
+                        <li class="rule-item-placeholder">Carregando regras...</li>
+                     </ul>
+                 </div>
+                 <button id="addNewRuleButton" class="btn-add">➕ Adicionar Nova Regra</button>
+
+                 <!-- Formulário de Edição de Regras (escondido por padrão) -->
+                 <div class="edit-rule-form" id="editRuleForm" style="display: none;">
+                     <h3 id="formRuleTitle">Adicionar Nova Regra</h3>
+                     <!-- Input oculto para guardar o índice da regra sendo editada (-1 para nova) -->
+                     <input type="hidden" id="formRuleIndex" value="-1">
+
+                     <div class="form-group">
+                        <label for="formRuleTriggers"> Gatilhos (palavras-chave separadas por vírgula):</label>
+                        <input type="text" id="formRuleTriggers" placeholder="ex: olá, bom dia, preço, doce, orçamento">
+                        <small>Se a mensagem do cliente CONTIVER alguma destas palavras.</small>
+                     </div>
+
+                     <div class="form-group">
+                        <label for="formRuleResponse">Resposta Automática:</label>
+                        <textarea id="formRuleResponse" placeholder="ex: Olá! Bem-vindo(a) à Magnos Doces! Como posso ajudar?" rows="3"></textarea>
+                        <small>A mensagem que o bot ENVIARÁ.</small>
+                     </div>
+
+                     <div class="form-group form-check">
+                         <input type="checkbox" id="formRuleIsLead" class="form-check-input">
+                         <label for="formRuleIsLead" class="form-check-label">Qualificar como Lead e Encaminhar?</label>
+                     </div>
+
+                     <!-- Opções de Encaminhamento (mostradas se o checkbox acima for marcado) -->
+                     <div id="formForwardingOptions" class="form-forwarding-options" style="display: none;">
+                         <div class="form-group">
+                             <label for="formRuleForwardTo">Encaminhar MENSAGEM ORIGINAL para este WhatsApp:</label>
+                             <input type="text" id="formRuleForwardTo" placeholder="55119XXXXXXXX@c.us">
+                             <small>Use o formato completo com código do país e @c.us.</small>
+                         </div>
+                         <div class="form-group">
+                             <label for="formRuleForwardPrefix">Prefixo para Mensagem Encaminhada (opcional):</label>
+                             <input type="text" id="formRuleForwardPrefix" placeholder="Ex: [Lead Site]">
+                             <small>Será adicionado ANTES da mensagem original do cliente.</small>
+                         </div>
+                     </div>
+
+                     <div class="form-actions">
+                         <span id="formRuleStatus" class="form-status"></span>
+                         <button type="button" id="cancelRuleEditButton" class="btn-secondary">Cancelar</button>
+                         <button type="button" id="saveRuleFormButton" class="btn-primary">Salvar Regra</button>
+                     </div>
+                 </div>
+            </section>
+
+            <section class="panel panel-logs">
                  <h2>Console de Logs</h2>
-                 <div id="logs"></div>
-            </div>
-        </div>
-    </div>
+                 <div id="logs" class="log-output scrollable">
+                     <!-- Logs serão adicionados aqui pelo JS -->
+                 </div>
+            </section>
+        </section>
+    </main>
+
+    <!-- Script do Renderer -->
     <script src="./renderer.js"></script>
 </body>
 </html>

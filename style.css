@@ -1,0 +1,514 @@
+/* ./style.css */
+
+/* Reset Básico e Variáveis */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+:root {
+    /* Paleta de Cores (Ajuste conforme seu gosto!) */
+    --color-primary: #075E54;      /* Verde Escuro Principal (Header, Botões Primários) */
+    --color-primary-dark: #054C44;
+    --color-primary-light: #128C7E;   /* Verde Secundário (Hover Botões, Acentos) */
+    --color-accent: #25D366;      /* Verde Brilhante WhatsApp (Ícones, Acentos Opcionais) */
+    --color-secondary: #ECE5DD;    /* Fundo App (Padrão WA Antigo) - pode trocar por cinza claro */
+    --color-bg-app: #f0f2f5; /* Fundo Cinza Mais Moderno (alternativa a --color-secondary) */
+    --color-panel-bg: #FFFFFF;      /* Fundo dos Painéis */
+    --color-panel-alt-bg: #f7f8fa;  /* Fundo Levemente Diferente (Lista de Regras, QR area) */
+    --color-text-dark: #111b21;   /* Texto Principal Escuro */
+    --color-text-medium: #667781; /* Texto Secundário, Placeholders */
+    --color-text-light: #FFFFFF;    /* Texto em fundos escuros */
+    --color-border: #e9edef;      /* Bordas Suaves */
+    --color-error: #d32f2f;       /* Vermelho Erro */
+    --color-error-bg: #ffebee;
+    --color-warning: #ffa000;     /* Laranja Aviso */
+    --color-warning-bg: #fff8e1;
+    --color-success: #388e3c;     /* Verde Sucesso */
+    --color-success-bg: #e8f5e9;
+    --color-info: #1976d2;       /* Azul Informação */
+    --color-info-bg: #e3f2fd;
+    --color-paused: #546e7a;     /* Cinza Botão Pausado */
+    --color-paused-bg: #eceff1;
+
+    /* Fontes */
+    --font-primary: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    --font-monospace: 'Consolas', 'Courier New', monospace;
+
+    /* Sombras e Bordas */
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 2px 5px rgba(0, 0, 0, 0.1);
+    --border-radius-sm: 4px;
+    --border-radius-md: 8px;
+}
+
+body {
+    font-family: var(--font-primary);
+    background-color: var(--color-bg-app); /* Usando o cinza */
+    color: var(--color-text-dark);
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+/* Layout Principal */
+.app-header {
+    background: var(--color-primary);
+    color: var(--color-text-light);
+    padding: 10px 20px;
+    box-shadow: var(--shadow-md);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0; /* Garante que não encolha */
+}
+
+.app-header h1 {
+    font-size: 1.3em;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+#app-version-info {
+    font-size: 0.8em;
+    opacity: 0.8;
+}
+
+.main-container {
+    display: flex;
+    flex: 1; /* Ocupa o espaço restante */
+    padding: 20px;
+    gap: 20px;
+    overflow: hidden; /* Evita overflow geral */
+}
+
+.left-column {
+    flex: 0 0 320px; /* Largura fixa para coluna esquerda */
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.right-column {
+    flex: 1; /* Ocupa o espaço restante */
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    min-width: 0; /* Necessário para flexbox lidar com overflow */
+}
+
+/* Painéis */
+.panel {
+    background-color: var(--color-panel-bg);
+    border-radius: var(--border-radius-md);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--color-border);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* Evita overflow interno */
+}
+
+.panel h2 {
+    font-size: 1.1em;
+    font-weight: 600;
+    color: var(--color-primary-dark);
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--color-border);
+    position: relative;
+}
+.panel h2::after { /* Pequeno detalhe visual */
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    width: 50px;
+    height: 2px;
+    background-color: var(--color-primary-light);
+}
+
+
+/* --- Coluna Esquerda --- */
+
+.panel-control {
+    flex-shrink: 0;
+}
+
+.button-group {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.secondary-actions {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px dashed var(--color-border);
+    display: flex;
+    gap: 10px;
+    justify-content: space-between;
+}
+
+#status-area {
+    text-align: center;
+    margin-bottom: 15px;
+    font-size: 0.9em;
+}
+
+.status {
+    font-weight: 600;
+    padding: 4px 12px;
+    border-radius: 15px;
+    display: inline-block;
+    font-size: 0.9em;
+    border: 1px solid transparent; /* Transparente por padrão */
+    transition: all 0.3s ease;
+    margin-left: 5px;
+}
+
+.status-disconnected, .status-error { background-color: var(--color-error-bg); color: var(--color-error); border-color: var(--color-error);}
+.status-initializing, .status-loading, .status-generating-qr { background-color: var(--color-warning-bg); color: var(--color-warning); border-color: var(--color-warning);}
+.status-scanning { background-color: var(--color-info-bg); color: var(--color-info); border-color: var(--color-info);}
+.status-authenticated, .status-connected { background-color: var(--color-success-bg); color: var(--color-success); border-color: var(--color-success);}
+.status-paused { background-color: var(--color-paused-bg); color: var(--color-paused); border-color: #bdcdd4;}
+.status-default { background-color: #e0e0e0; color: #424242; border-color: #bdbdbd;}
+
+/* Área de Conexão (QR/Status) */
+.panel-connection {
+    flex-grow: 1; /* Ocupa espaço disponível */
+    align-items: center;
+    justify-content: center;
+    background-color: var(--color-panel-alt-bg);
+    min-height: 250px;
+}
+.panel-connection h2 { /* Título específico para este painel */
+     align-self: flex-start;
+     width: 100%;
+}
+
+.connection-status-display {
+    display: flex; /* Usado para controlar visibilidade */
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    width: 100%;
+    height: 100%; /* Ocupar o espaço do painel */
+}
+
+#qr-code-container { background-color: #fff; padding: 15px; border-radius: var(--border-radius-sm); box-shadow: var(--shadow-sm); }
+#qr-code-image { max-width: 100%; height: auto; max-height: 180px; display: none; border: 1px solid var(--color-border); margin-bottom: 15px;}
+#qr-placeholder { color: var(--color-text-medium); font-size: 1em; }
+
+#connected-info-panel { background-color: var(--color-success-bg); padding: 20px; border-radius: var(--border-radius-md); border: 1px solid var(--color-success);}
+#connected-info-panel .icon { font-size: 2.5em; color: var(--color-success); margin-bottom: 10px; }
+#connected-info-panel p { font-size: 1.1em; color: var(--color-success); font-weight: 600; }
+#connected-info-panel small { font-size: 0.9em; color: var(--color-success); opacity: 0.9; }
+
+#error-info-panel { background-color: var(--color-error-bg); padding: 20px; border-radius: var(--border-radius-md); border: 1px solid var(--color-error);}
+#error-info-panel .icon { font-size: 2.5em; color: var(--color-error); margin-bottom: 10px; }
+#error-info-panel p { font-size: 1.1em; color: var(--color-error); font-weight: 600; }
+#error-info-panel small { font-size: 0.9em; color: var(--color-error); opacity: 0.9; }
+
+
+/* Update Progress Bar */
+#updateProgressContainer { margin-top: 15px; padding-top: 10px; border-top: 1px solid var(--color-border);}
+#updateProgressLabel { font-size: 0.85em; color: var(--color-text-medium); margin-bottom: 5px; display: block; text-align: center; font-weight: 500;}
+#updateProgressBar { width: 100%; height: 8px; appearance: none; border: none; border-radius: 4px; overflow: hidden; background-color: #e0e0e0; }
+#updateProgressBar::-webkit-progress-bar { background-color: #e0e0e0; }
+#updateProgressBar::-webkit-progress-value { background-color: var(--color-primary-light); transition: width 0.2s linear; }
+#updateProgressBar::-moz-progress-bar { background-color: var(--color-primary-light); }
+
+
+/* --- Coluna Direita --- */
+
+/* Scrollbar Genérico */
+.scrollable {
+    overflow-y: auto;
+    /* Customização opcional da scrollbar */
+    scrollbar-width: thin;          /* Firefox */
+    scrollbar-color: var(--color-primary-light) var(--color-panel-alt-bg); /* Firefox */
+}
+/* Webkit (Chrome, Safari, Edge) */
+.scrollable::-webkit-scrollbar { width: 8px; }
+.scrollable::-webkit-scrollbar-track { background: var(--color-panel-alt-bg); border-radius: 4px; }
+.scrollable::-webkit-scrollbar-thumb { background-color: #c1c1c1; border-radius: 4px; border: 2px solid var(--color-panel-alt-bg); }
+.scrollable::-webkit-scrollbar-thumb:hover { background-color: #a8a8a8; }
+
+
+/* Gerenciador de Regras */
+.panel-rules { flex: 3; min-height: 200px; /* Garante um tamanho mínimo */}
+.rules-list-container {
+    flex-grow: 1;
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius-sm);
+    margin-bottom: 15px;
+    background-color: var(--color-panel-alt-bg); /* Fundo sutilmente diferente */
+}
+
+.rules-list { list-style: none; }
+.rule-item-placeholder { padding: 20px; color: var(--color-text-medium); text-align: center; font-style: italic;}
+
+.rule-item {
+    padding: 12px 15px;
+    border-bottom: 1px solid var(--color-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start; /* Alinha items no topo */
+    gap: 15px;
+    font-size: 0.95em;
+    transition: background-color 0.2s ease;
+}
+.rule-item:last-child { border-bottom: none; }
+.rule-item:hover { background-color: #fdfdfd; }
+.rule-item.editing { /* Estilo para quando a regra está sendo editada */
+    background-color: var(--color-info-bg);
+    border-left: 3px solid var(--color-info);
+}
+
+.rule-details { flex-grow: 1; min-width: 0; /* Permite quebra de texto */ }
+.rule-details .triggers { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 6px; }
+.rule-details .triggers span {
+    background-color: var(--color-info-bg);
+    color: var(--color-info);
+    padding: 2px 8px;
+    border-radius: 12px; /* Mais arredondado */
+    font-size: 0.85em;
+    border: 1px solid #b3e5fc;
+    font-weight: 500;
+}
+.rule-details .response {
+    display: block;
+    color: var(--color-text-dark);
+    margin-bottom: 4px;
+    white-space: pre-wrap; /* Mantém quebras de linha */
+    word-break: break-word; /* Quebra palavras longas */
+    line-height: 1.4;
+}
+.rule-details .forwarding {
+    display: block;
+    font-size: 0.85em;
+    color: var(--color-success); /* Verde para indicar encaminhamento */
+    margin-top: 5px;
+    font-weight: 500;
+}
+.rule-details .forwarding::before { content: "↪ "; } /* Ícone para forwarding */
+
+
+.rule-actions {
+    flex-shrink: 0;
+    display: flex;
+    gap: 8px;
+    margin-top: 2px; /* Leve ajuste vertical */
+}
+
+/* Formulário de Edição */
+.edit-rule-form {
+    margin-top: 15px;
+    padding: 20px;
+    border: 1px solid var(--color-primary-light);
+    border-radius: var(--border-radius-md);
+    background-color: #f8f9fb; /* Fundo sutilmente diferente */
+    animation: fadeIn 0.3s ease-out; /* Efeito suave ao aparecer */
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+
+.edit-rule-form h3 {
+    font-size: 1.2em;
+    color: var(--color-primary-dark);
+    margin-bottom: 15px;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 600;
+    font-size: 0.9em;
+    color: var(--color-text-dark);
+}
+.form-group input[type="text"],
+.form-group textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #ccc;
+    border-radius: var(--border-radius-sm);
+    font-size: 0.95em;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.form-group input[type="text"]:focus,
+.form-group textarea:focus {
+    border-color: var(--color-primary-light);
+    box-shadow: 0 0 0 2px rgba(18, 140, 126, 0.2); /* Foco suave */
+    outline: none;
+}
+.form-group textarea {
+    min-height: 60px;
+    resize: vertical;
+}
+.form-group small {
+    display: block;
+    margin-top: 4px;
+    font-size: 0.8em;
+    color: var(--color-text-medium);
+}
+
+.form-check { display: flex; align-items: center; margin-bottom: 10px; }
+.form-check-input { margin-right: 8px; width: 16px; height: 16px; accent-color: var(--color-primary); /* Cor do check */ }
+.form-check-label { margin-bottom: 0; font-weight: normal; }
+
+.form-forwarding-options {
+    padding: 15px;
+    margin-top: 10px;
+    margin-bottom: 15px;
+    border-left: 3px solid var(--color-primary-light);
+    background-color: #ffffff;
+    border-radius: 0 var(--border-radius-sm) var(--border-radius-sm) 0;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 10px;
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid var(--color-border);
+}
+.form-status {
+    flex-grow: 1; /* Ocupa espaço para alinhar botões à direita */
+    font-size: 0.9em;
+    text-align: left;
+    font-weight: 500;
+}
+.form-status.success { color: var(--color-success); }
+.form-status.error { color: var(--color-error); }
+
+
+/* Logs */
+.panel-logs { flex: 2; min-height: 150px; /* Garante um tamanho mínimo */}
+.log-output {
+    flex-grow: 1;
+    background-color: #fff;
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius-sm);
+    padding: 15px;
+    font-family: var(--font-monospace);
+    font-size: 0.9em; /* Ligeiramente maior para legibilidade */
+    line-height: 1.6;
+    color: var(--color-text-medium);
+    white-space: pre-wrap; /* Mantém espaços e quebras */
+    word-wrap: break-word; /* Quebra palavras longas */
+}
+
+.log-entry {
+    padding-bottom: 3px;
+    border-bottom: 1px dashed #f0f0f0; /* Separador suave */
+    margin-bottom: 3px;
+    display: flex; /* Para alinhar timestamp e mensagem */
+    gap: 10px;
+}
+.log-entry .timestamp {
+    color: var(--color-text-medium);
+    font-weight: 500;
+    flex-shrink: 0; /* Não encolhe */
+}
+.log-entry .message {
+     flex-grow: 1; /* Ocupa espaço restante */
+}
+/* Cores opcionais para tipos de log (adicionar classes via JS) */
+.log-entry.log-error .message { color: var(--color-error); font-weight: bold; }
+.log-entry.log-warn .message { color: var(--color-warning); }
+.log-entry.log-success .message { color: var(--color-success); }
+.log-entry.log-info .message { color: var(--color-text-dark); } /* Cor normal para info */
+
+
+/* Estilos de Botões Globais */
+button {
+    padding: 8px 16px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    border-radius: var(--border-radius-sm);
+    transition: background-color 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+    text-align: center;
+    line-height: 1.4; /* Melhora alinhamento vertical do texto */
+}
+button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+button:not(:disabled):hover {
+    filter: brightness(1.1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+button:not(:disabled):active {
+    transform: translateY(1px);
+    filter: brightness(0.95);
+    box-shadow: none;
+}
+
+/* Variações de Botões */
+.btn-primary, .btn-start.running { /* Botão verde principal ou stop */
+    background-color: var(--color-primary);
+    color: var(--color-text-light);
+}
+.btn-primary:not(:disabled):hover, .btn-start.running:not(:disabled):hover { background-color: var(--color-primary-dark); }
+
+.btn-start:not(.running) { /* Botão de iniciar */
+     background-color: var(--color-success); /* Verde mais claro para iniciar */
+     color: var(--color-text-light);
+}
+.btn-start:not(.running):not(:disabled):hover { background-color: #2e7d32; } /* Verde mais escuro no hover */
+
+.btn-secondary {
+    background-color: #6c757d; /* Cinza secundário */
+    color: var(--color-text-light);
+}
+.btn-secondary:not(:disabled):hover { background-color: #5a6268; }
+
+.btn-pause { background-color: var(--color-warning); color: #fff; }
+.btn-pause.paused { background-color: var(--color-paused-bg); color: var(--color-paused); font-weight: bold;}
+.btn-pause:not(:disabled):hover { background-color: #f57c00; }
+.btn-pause.paused:not(:disabled):hover { background-color: #d5dde1; }
+
+
+.btn-danger { background-color: var(--color-error); color: var(--color-text-light); }
+.btn-danger:not(:disabled):hover { background-color: #c62828; }
+
+.btn-small { font-size: 0.85rem; padding: 5px 10px;}
+.btn-icon { padding: 6px 8px; font-size: 1.1em; line-height: 1;} /* Para botões só com ícone */
+
+.btn-add { background-color: var(--color-primary); color: var(--color-text-light); width: 100%; margin-top: auto; /* Empurra para baixo */}
+
+/* Botões de Ação da Regra */
+.rule-actions button {
+    font-size: 1.1em; /* Aumenta o tamanho do ícone */
+    padding: 4px 6px;
+    line-height: 1;
+    border-radius: 50%; /* Círculo */
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: none; /* Remove sombra padrão se houver */
+}
+.rule-edit-button { background-color: var(--color-info); color: #fff;}
+.rule-edit-button:not(:disabled):hover { background-color: #1565c0;}
+.rule-delete-button { background-color: var(--color-error); color: #fff;}
+.rule-delete-button:not(:disabled):hover { background-color: #c62828; }

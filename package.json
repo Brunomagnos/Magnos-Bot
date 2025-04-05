@@ -1,6 +1,6 @@
 {
   "name": "MagnosBot",
-  "version": "1.0.8",
+  "version": "1.1.0",
   "description": "Bot de atendimento automático para WhatsApp",
   "main": "main.js",
   "scripts": {
@@ -8,45 +8,16 @@
     "build": "electron-builder",
     "publish": "electron-builder --publish always"
   },
-  "keywords": [
-    "whatsapp",
-    "bot",
-    "electron",
-    "automação"
-  ],
-  "author": "Magnos (com assistência AI)",
-  "license": "ISC",
-  "devDependencies": {
-    "electron": "^29.4.6",
-    "electron-builder": "^24.13.3"
-  },
-  "dependencies": {
-    "electron-log": "^5.1.7",
-    "electron-updater": "^6.2.1",
-    "qrcode": "^1.5.3",
-    "whatsapp-web.js": "^1.27.0"
-  },
+  "keywords": ["whatsapp","bot","electron","automação"],
+  "author": "Magnos (com assistência AI)","license": "ISC",
+  "devDependencies": {"electron": "^29.4.6","electron-builder": "^24.13.3"},
+  "dependencies": {"electron-log": "^5.1.7","electron-updater": "^6.2.1","qrcode": "^1.5.3","whatsapp-web.js": "^1.27.0"},
   "build": {
-    "appId": "com.magnos.autowppbot",
-    "productName": "Auto Wpp-Bot Magnos",
+    "appId": "com.magnos.autowppbot","productName": "Auto Wpp-Bot Magnos",
     "asar": false,
-    "win": {
-      "target": "nsis",
-      "icon": "build/icon.ico"
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "perMachine": false
-    },
-    "directories": {
-      "buildResources": "build",
-      "output": "dist"
-    },
-    "publish": {
-      "provider": "github",
-      "owner": "Brunomagnos",
-      "repo": "Magnos-Bot"
-    }
+    "win": {"target": "nsis","icon": "build/icon.ico"},
+    "nsis": {"oneClick": false,"allowToChangeInstallationDirectory": true,"perMachine": false},
+    "directories": {"buildResources": "build","output": "dist"},
+    "publish": {"provider": "github","owner": "Brunomagnos","repo": "Magnos-Bot"}
   }
 }
