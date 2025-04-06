@@ -2,17 +2,15 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <!-- Regra CSP mais segura, permitindo apenas recursos locais -->
+    <!-- Regra CSP mais segura -->
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self';">
     <title>MagnosBot - Assistente WhatsApp</title>
-    <!-- Link para o arquivo CSS externo -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <header class="app-header">
         <h1>MagnosBot ✨</h1>
-        <!-- Adicionado um ID para possível controle futuro (ex: info da versão) -->
-        <div id="app-version-info">v1.1.0</div>
+        <div id="app-version-info">v?</div> <!-- Versão será preenchida se necessário -->
     </header>
 
     <main class="main-container">
@@ -21,18 +19,19 @@
             <section class="panel panel-control">
                 <h2>Controle e Status</h2>
                 <div class="button-group">
-                    <!-- Botão Start/Stop unificado -->
+                    <!-- Botão Start/Stop (handler dinâmico) -->
                     <button id="startButton" class="btn-start">🚀 Iniciar Bot</button>
-                    <button id="pauseButton" class="btn-pause" style="display: none;" title="Pausar/Continuar o recebimento de novas mensagens">⏸️ Pausar</button>
+                    <!-- Botão Pause/Continuar (controlado por JS) -->
+                    <button id="pauseButton" class="btn-pause" style="display: none;" title="Pausar/Continuar o recebimento">⏸️ Pausar</button>
                 </div>
                 <div id="status-area">
                     Status: <span id="status" class="status status-disconnected">Desconectado</span>
                 </div>
-                 <!-- Botões de Ações Secundárias -->
                  <div class="secondary-actions">
-                    <button id="checkUpdateButton" class="btn-secondary" title="Verificar se há novas versões do bot disponíveis">🔄 Verificar Atualizações</button>
-                    <button id="clearSessionButton" class="btn-danger btn-small" title="Limpa a sessão salva. Exigirá novo scan QR. Use se o bot não conectar.">🧹 Limpar Sessão</button>
+                    <button id="checkUpdateButton" class="btn-secondary btn-small" title="Verificar novas versões">🔄 Verificar Updates</button>
+                    <button id="clearSessionButton" class="btn-danger btn-small" title="Limpa sessão (exige novo QR)">🧹 Limpar Sessão</button>
                  </div>
+                <!-- Área de Progresso do Update -->
                 <div id="updateProgressContainer" style="display: none;">
                     <span id="updateProgressLabel"></span>
                     <progress id="updateProgressBar" value="0" max="100"></progress>
@@ -41,15 +40,18 @@
 
             <section class="panel panel-connection">
                  <h2>Conexão WhatsApp</h2>
+                 <!-- Área QR -->
                  <div id="qr-code-container" class="connection-status-display">
                     <img id="qr-code-image" src="" alt="QR Code WhatsApp">
                     <span id="qr-placeholder">Aguardando iniciar...</span>
                  </div>
+                 <!-- Área Conectado -->
                  <div id="connected-info-panel" class="connection-status-display" style="display: none;">
                     <div class="icon success-icon">✔</div>
                     <p>Conectado!</p>
                     <small>Monitorando mensagens...</small>
                  </div>
+                  <!-- Área Erro -->
                   <div id="error-info-panel" class="connection-status-display" style="display: none;">
                     <div class="icon error-icon">❌</div>
                     <p>Erro / Desconectado</p>
@@ -64,46 +66,46 @@
                  <h2>Gerenciador de Regras</h2>
                  <div class="rules-list-container scrollable">
                      <ul class="rules-list" id="rulesList">
-                        <!-- Regras serão renderizadas aqui pelo JS -->
+                        <!-- Placeholder inicial -->
                         <li class="rule-item-placeholder">Carregando regras...</li>
                      </ul>
                  </div>
+                 <!-- Botão para abrir formulário -->
                  <button id="addNewRuleButton" class="btn-add">➕ Adicionar Nova Regra</button>
 
-                 <!-- Formulário de Edição de Regras (escondido por padrão) -->
+                 <!-- Formulário de Edição/Adição (escondido por padrão) -->
                  <div class="edit-rule-form" id="editRuleForm" style="display: none;">
                      <h3 id="formRuleTitle">Adicionar Nova Regra</h3>
-                     <!-- Input oculto para guardar o índice da regra sendo editada (-1 para nova) -->
-                     <input type="hidden" id="formRuleIndex" value="-1">
+                     <input type="hidden" id="formRuleIndex" value="-1"> <!-- Índice da regra (-1 = nova) -->
 
                      <div class="form-group">
-                        <label for="formRuleTriggers"> Gatilhos (palavras-chave separadas por vírgula):</label>
-                        <input type="text" id="formRuleTriggers" placeholder="ex: olá, bom dia, preço, doce, orçamento">
-                        <small>Se a mensagem do cliente CONTIVER alguma destas palavras.</small>
+                        <label for="formRuleTriggers">Gatilhos (palavras separadas por vírgula):</label>
+                        <input type="text" id="formRuleTriggers" placeholder="ex: olá, bom dia, orçamento">
+                        <small>Se a msg contiver alguma destas palavras.</small>
                      </div>
 
                      <div class="form-group">
                         <label for="formRuleResponse">Resposta Automática:</label>
-                        <textarea id="formRuleResponse" placeholder="ex: Olá! Bem-vindo(a) à Magnos Doces! Como posso ajudar?" rows="3"></textarea>
-                        <small>A mensagem que o bot ENVIARÁ.</small>
+                        <textarea id="formRuleResponse" placeholder="ex: Olá! Bem-vindo(a)! Como posso ajudar?" rows="3"></textarea>
+                        <small>Mensagem que o bot enviará.</small>
                      </div>
 
-                     <div class="form-group form-check">
+                     <div class="form-check">
                          <input type="checkbox" id="formRuleIsLead" class="form-check-input">
                          <label for="formRuleIsLead" class="form-check-label">Qualificar como Lead e Encaminhar?</label>
                      </div>
 
-                     <!-- Opções de Encaminhamento (mostradas se o checkbox acima for marcado) -->
+                     <!-- Opções de Encaminhamento (mostradas via JS) -->
                      <div id="formForwardingOptions" class="form-forwarding-options" style="display: none;">
                          <div class="form-group">
-                             <label for="formRuleForwardTo">Encaminhar MENSAGEM ORIGINAL para este WhatsApp:</label>
+                             <label for="formRuleForwardTo">Encaminhar para este WhatsApp:</label>
                              <input type="text" id="formRuleForwardTo" placeholder="55119XXXXXXXX@c.us">
-                             <small>Use o formato completo com código do país e @c.us.</small>
+                             <small>Formato completo: [cod país][cod area][numero]@c.us</small>
                          </div>
                          <div class="form-group">
-                             <label for="formRuleForwardPrefix">Prefixo para Mensagem Encaminhada (opcional):</label>
+                             <label for="formRuleForwardPrefix">Prefixo p/ Msg Encaminhada (opcional):</label>
                              <input type="text" id="formRuleForwardPrefix" placeholder="Ex: [Lead Site]">
-                             <small>Será adicionado ANTES da mensagem original do cliente.</small>
+                             <small>Será adicionado ANTES da mensagem original.</small>
                          </div>
                      </div>
 
@@ -118,13 +120,14 @@
             <section class="panel panel-logs">
                  <h2>Console de Logs</h2>
                  <div id="logs" class="log-output scrollable">
-                     <!-- Logs serão adicionados aqui pelo JS -->
+                     <!-- Logs serão adicionados dinamicamente -->
+                     <div class="log-entry log-info"><span class="timestamp">[...]</span><span class="message">Interface carregada.</span></div>
                  </div>
             </section>
         </section>
     </main>
 
-    <!-- Script do Renderer -->
+    <!-- Script principal do Renderer -->
     <script src="./renderer.js"></script>
 </body>
 </html>

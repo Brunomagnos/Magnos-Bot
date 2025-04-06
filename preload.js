@@ -1,96 +1,119 @@
-// ./preload.js (VERSÃO FINAL - Completa com Canais de Login)
+// ./preload.js (UNIFICADO E MAIS SEGURO)
 
 const { contextBridge, ipcRenderer } = require('electron');
 
-// --- Canais VÁLIDOS que o Renderer pode OUVIR (vindos do Main) ---
-const validReceive = [
-    // Status e Conexão
-    'update-status',         // Atualiza o texto e a classe CSS do status geral (disconnected, initializing, scanning, connecting, connected, paused, error)
-    'display-qr',            // Mostra o QR Code recebido como URL de dados
-    'clear-qr',              // Sinaliza para limpar/esconder o QR Code (geralmente quando autenticado/pronto)
+// É seguro usar console.log aqui para debug durante o desenvolvimento.
+console.log('[Preload] INICIADO.');
 
-    // Logging e Regras
-    'log-message',           // Recebe uma mensagem de log para exibir na UI (com nível opcional: info, warn, error, success, debug)
-    'rules-loaded',          // Recebe a lista de regras carregadas do arquivo json
-
-    // Atualizações
-    'update-download-progress', // Progresso do download de atualização (-1 erro, 0-99 progresso, 100 concluído/sem att)
-
-    // Controle do Bot
-    'pause-state-changed',   // Informa se o bot foi pausado (true) ou continuado (false)
-
-    // Feedback de Ações de Regras
-    'rule-save-status',      // Resultado (sucesso/erro, mensagem, regras atualizadas) ao tentar salvar uma regra
-    'rule-delete-status',    // Resultado (sucesso/erro, mensagem, regras atualizadas) ao tentar excluir uma regra
-
-    // Feedback de Login (para a tela de login)
-    'login-failed'           // Informa que a tentativa de login falhou (com mensagem de erro)
+// Canais permitidos: Renderer -> Main
+const allowedSendChannels = [
+    'login-attempt',
+    'start-bot',
+    'stop-bot',
+    'toggle-pause-bot',
+    'clear-session-request',
+    'load-rules-request',
+    'save-rule',
+    'delete-rule',
+    'check-for-update-request',
+    'get-initial-state',
+    'open-external-link', // Exemplo: Para abrir links em navegador externo
+    'renderer-log', // Canal para enviar logs do renderer para o main
+    'quit-and-install-update',
+    'preload-error', // Para notificar main sobre erros críticos aqui
+    // Adicione outros canais que o Renderer PRECISA ENVIAR para o Main
 ];
 
-// --- Canais VÁLIDOS que o Renderer pode ENVIAR (para o Main) ---
-const validSend = [
-    // Controle do Bot
-    'start-bot',             // Solicita iniciar a conexão com o WhatsApp (só funciona após login)
-    'stop-bot',              // Solicita parar o bot e desconectar
-    'toggle-pause-bot',      // Solicita alternar o estado de pausa do bot
-    'clear-session-request', // Solicita limpar os dados da sessão salva (exige escanear QR de novo)
-    'get-initial-state',     // Pede o estado atual do bot e regras ao carregar a UI principal (depois do login)
-
-    // Gerenciamento de Regras
-    'load-rules-request',    // Pede ao main para (re)carregar e enviar as regras atuais
-    'save-rule',             // Envia uma nova regra ou uma regra editada para salvar ({ index, rule })
-    'delete-rule',           // Solicita a exclusão de uma regra pelo índice (envia o index)
-
-    // Atualizações
-    'check-for-update-request', // Pede para verificar se há atualizações
-
-    // Autenticação
-    'login-attempt'          // Envia as credenciais ({ username, password }) para validação
+// Canais permitidos: Main -> Renderer
+const allowedReceiveChannels = [
+    'login-failed',
+    'update-status', // Status geral (disconnected, scanning, connected, error, paused...)
+    'display-qr',
+    'clear-qr', // Para limpar QR após conectar
+    'log-message', // Mensagens de log do Main para exibir na UI
+    'rules-loaded',
+    'rule-save-status',
+    'rule-delete-status',
+    'pause-state-changed', // Informa a UI se o bot foi pausado/continuado
+    // -- Canais de Update --
+    'update-available',
+    'update-not-available',
+    'update-downloaded',
+    'update-download-progress',
+    'update-error',
+    // Adicione outros canais que o Renderer PRECISA OUVIR do Main
 ];
 
-// --- Expondo a API Segura ---
-contextBridge.exposeInMainWorld('electronAPI', {
-    /**
-     * Envia um comando/dados para o processo principal.
-     * @param {string} channel - O canal de comunicação (deve estar em validSend).
-     * @param {any} [data] - Os dados a serem enviados (opcional).
-     */
-    send: (channel, data) => {
-        if (validSend.includes(channel)) {
-            ipcRenderer.send(channel, data);
-        } else {
-            console.warn(`[Preload WARN] Bloqueado: Tentativa de envio pelo canal inválido "${channel}"`);
-        }
-    },
+try {
+    contextBridge.exposeInMainWorld('electronAPI', {
+        /**
+         * Envia dados do Renderer para o Main de forma segura.
+         * @param {string} channel - O nome do canal IPC (deve estar em allowedSendChannels).
+         * @param {*} data - Os dados a serem enviados.
+         */
+        send: (channel, data) => {
+            if (allowedSendChannels.includes(channel)) {
+                ipcRenderer.send(channel, data);
+            } else {
+                console.warn(`[Preload WARN] Tentativa bloqueada de enviar pelo canal "${channel}". Canal não permitido.`);
+            }
+        },
 
-    /**
-     * Registra uma função para ouvir eventos do processo principal.
-     * @param {string} channel - O canal de comunicação (deve estar em validReceive).
-     * @param {function} listener - A função callback (recebe ...args enviados pelo Main).
-     * @returns {function} Uma função para remover o listener registrado.
-     */
-    on: (channel, listener) => {
-        if (validReceive.includes(channel)) {
-            const safeListener = (event, ...args) => listener(...args); // Evita expor o objeto 'event'
-            ipcRenderer.on(channel, safeListener);
-            return () => ipcRenderer.removeListener(channel, safeListener); // Permite cancelamento
-        } else {
-            console.warn(`[Preload WARN] Bloqueado: Tentativa de escuta no canal inválido "${channel}"`);
-            return () => {}; // Retorna função vazia para evitar erros no Renderer
-        }
-    },
+        /**
+         * Registra um listener para receber dados do Main no Renderer de forma segura.
+         * @param {string} channel - O nome do canal IPC (deve estar em allowedReceiveChannels).
+         * @param {function} listener - A função callback a ser executada quando dados chegarem. (event, ...args) => listener(...args)
+         * @returns {function} - Uma função para remover o listener.
+         */
+        on: (channel, listener) => {
+            if (allowedReceiveChannels.includes(channel)) {
+                // Wrapper para segurança e consistência, removendo o objeto 'event'
+                const safeListener = (event, ...args) => listener(...args);
+                ipcRenderer.on(channel, safeListener);
+                // Retorna uma função para desregistrar o listener específico
+                return () => {
+                    ipcRenderer.removeListener(channel, safeListener);
+                };
+            } else {
+                console.warn(`[Preload WARN] Tentativa bloqueada de ouvir o canal "${channel}". Canal não permitido.`);
+                return () => {}; // Retorna função no-op se não permitido
+            }
+        },
 
-    /**
-     * Remove todos os listeners para um canal específico (se necessário).
-     * @param {string} channel - O canal (deve estar em validReceive).
-     */
-    removeAllListeners: (channel) => {
-        if (validReceive.includes(channel)) {
-            ipcRenderer.removeAllListeners(channel);
-        } else {
-            console.warn(`[Preload WARN] Bloqueado: Tentativa de remover listeners do canal inválido "${channel}"`);
+        /**
+         * Remove todos os listeners para um canal específico.
+         * Útil ao desmontar componentes ou trocar de view.
+         * @param {string} channel - O nome do canal IPC.
+         */
+        removeAllListeners: (channel) => {
+             if (allowedReceiveChannels.includes(channel)) {
+                ipcRenderer.removeAllListeners(channel);
+             } else {
+                 console.warn(`[Preload WARN] Tentativa bloqueada de remover listeners do canal "${channel}". Canal não permitido.`);
+             }
+        },
+
+         // Função explícita para enviar logs do Renderer para o Main
+        log: (level, message) => {
+             if (allowedSendChannels.includes('renderer-log')) {
+                 ipcRenderer.send('renderer-log', { level, message });
+             } else {
+                 console.warn(`[Preload Log Fallback - Canal 'renderer-log' não permitido] ${level}: ${message}`);
+             }
         }
+    });
+    console.log('✅ [Preload] CONCLUÍDO: electronAPI exposta com sucesso.');
+
+} catch (error) {
+    console.error('❌❌❌ [Preload] ERRO CRÍTICO ao expor API:', error);
+    try {
+        // Tenta notificar o processo principal sobre o erro grave no preload
+         if (allowedSendChannels.includes('preload-error')) {
+             ipcRenderer.send('preload-error', `Erro ao expor API: ${error.message}`);
+         } else {
+             console.error("❌ [Preload] Não é possível enviar erro para o Main: canal 'preload-error' não permitido.");
+         }
+    } catch (sendError) {
+        console.error('❌ [Preload] Falha crítica ao tentar enviar erro para o main:', sendError);
     }
-});
-
-console.log("[Preload] electronAPI exposta com sucesso (incluindo canais de login).");
+}

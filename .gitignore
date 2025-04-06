@@ -1,24 +1,75 @@
 # Dependencies
-node_modules/
+/node_modules/
 
 # Build output
-dist/
+/dist/
+/out/
 *.exe
+*.dmg
+*.AppImage
+*.deb
+*.rpm
+*.snap
+*.pkg
+*.msi
+*.appx
 *.blockmap
 *.yml
 *.yaml
+!/dist/latest.yml # Keep if using auto-updater local check
 
 # Logs
 *.log
+/logs/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-logs/
+pnpm-debug.log*
 
 # OS generated files
 .DS_Store
+._*
 Thumbs.db
 
 # IDE / Editor folders
 .vscode/
 .idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Optional PNPM lockfile cache
+pnpm-lock.yaml
+
+# Electron Build Temp Files
+/node_modules/.bin/electron
+/node_modules/.bin/electron.cmd
+
+# Build Resources (Source only, actual built resources should be packaged)
+# Example: Keep source icons, ignore the rest inside 'build'
+build/
+!build/icon.*
+!build/icons/
+
+# Ignore generated session data (important for whatsapp-web.js)
+/wwebjs_auth/
+# OR if you use a different session path:
+# /session/
+
+# User data (e.g., rules.json - better to backup manually if needed)
+*.json
+!package.json
+!package-lock.json
+!tsconfig*.json # Keep tsconfig files if used
