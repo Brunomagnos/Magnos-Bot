@@ -1,23 +1,88 @@
 {
   "name": "MagnosBot",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "Bot de atendimento automático para WhatsApp",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder",
-    "publish": "electron-builder --publish always"
+    "build": "electron-builder build",
+    "build:win": "electron-builder build --win",
+    "build:mac": "electron-builder build --mac",
+    "build:linux": "electron-builder build --linux",
+    "publish": "electron-builder build --publish always",
+    "lint": "echo 'Lint script not configured' && exit 0",
+    "postinstall": "electron-builder install-app-deps"
   },
-  "keywords": ["whatsapp","bot","electron","automação"],
-  "author": "Magnos (com assistência AI)","license": "ISC",
-  "devDependencies": {"electron": "^29.4.6","electron-builder": "^24.13.3"},
-  "dependencies": {"electron-log": "^5.1.7","electron-updater": "^6.2.1","qrcode": "^1.5.3","whatsapp-web.js": "^1.27.0"},
+  "keywords": [
+    "whatsapp",
+    "bot",
+    "electron",
+    "automação",
+    "assistente",
+    "atendimento"
+  ],
+  "author": "Bruno Magnos",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^29.4.6",
+    "electron-builder": "^24.13.3"
+  },
+  "dependencies": {
+    "electron-log": "^5.1.7",
+    "electron-updater": "^6.6.2",
+    "qrcode": "^1.5.3",
+    "whatsapp-web.js": "^1.27.0",
+    "fs-extra": "^10.1.0"
+  },
   "build": {
-    "appId": "com.magnos.autowppbot","productName": "Auto Wpp-Bot Magnos",
-    "asar": false,
-    "win": {"target": "nsis","icon": "build/icon.ico"},
-    "nsis": {"oneClick": false,"allowToChangeInstallationDirectory": true,"perMachine": false},
-    "directories": {"buildResources": "build","output": "dist"},
-    "publish": {"provider": "github","owner": "Brunomagnos","repo": "Magnos-Bot"}
+    "appId": "com.magnos.autowppbot",
+    "productName": "MagnosBot Wpp",
+    "asar": true,
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "mac": {
+      "category": "public.app-category.utilities",
+      "target": "dmg",
+      "icon": "build/icon.icns"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Utility",
+      "icon": "build/icons"
+    },
+    "directories": {
+      "buildResources": "build",
+      "output": "dist"
+    },
+    "files": [
+      "**/*",
+      "!**/.vscode/*",
+      "!src/*",
+      "!*.{txt,md}",
+      "!{.eslintignore,.eslintrc.cjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,electron-builder.yml}",
+      "!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}",
+      "!.env*",
+      "!*.log",
+      "!logs/",
+      "!dist/",
+      "!release/"
+    ],
+    "publish": {
+      "provider": "github",
+      "owner": "Brunomagnos",
+      "repo": "Magnos-Bot"
+    }
   }
 }
